@@ -121,21 +121,78 @@ export interface GetIssueDetailResponse {
     children_count: number;
 }
 
-export interface ProjectStructureItem {
+// MCP get_project_structure_tool の応答構造
+export interface ProjectStructureStatus {
+    name: string;
+    is_closed: boolean;
+}
+
+export interface ProjectStructureVersion {
+    id: string;
+    name: string;
+}
+
+export interface ProjectStructureAssignee {
+    id: string;
+    name: string;
+}
+
+export interface ProjectStructureTaskItem {
     id: string;
     subject: string;
-    tracker: string;
-    status: string;
-    assigned_to?: string;
-    version?: string;
-    children?: ProjectStructureItem[];
+    status: ProjectStructureStatus;
+    assigned_to?: ProjectStructureAssignee;
+    done_ratio?: number;
+}
+
+export interface ProjectStructureChildren {
+    tasks: ProjectStructureTaskItem[];
+    bugs: ProjectStructureTaskItem[];
+    tests: ProjectStructureTaskItem[];
+}
+
+export interface ProjectStructureUserStory {
+    id: string;
+    subject: string;
+    type: string;
+    status: ProjectStructureStatus;
+    version?: ProjectStructureVersion;
+    assigned_to?: ProjectStructureAssignee;
+    children?: ProjectStructureChildren;
+}
+
+export interface ProjectStructureFeature {
+    id: string;
+    subject: string;
+    type: string;
+    status: ProjectStructureStatus;
+    user_stories: ProjectStructureUserStory[];
+}
+
+export interface ProjectStructureEpic {
+    id: string;
+    subject: string;
+    type: string;
+    status: ProjectStructureStatus;
+    features: ProjectStructureFeature[];
 }
 
 export interface GetProjectStructureResponse {
     success: boolean;
-    project_id: string;
-    structure: ProjectStructureItem[];
-    total_count: number;
+    project: {
+        id: string;
+        identifier: string;
+        name: string;
+    };
+    structure: ProjectStructureEpic[];
+    summary: {
+        total_epics: number;
+        total_features: number;
+        total_user_stories: number;
+        total_tasks: number;
+        total_bugs: number;
+        total_tests: number;
+    };
 }
 
 export interface ListVersionsResponse {

@@ -1,6 +1,23 @@
 import * as vscode from 'vscode';
 import { McpClient } from './mcpClient';
-import { ProjectStructureItem } from './types';
+import {
+    ProjectStructureEpic,
+    ProjectStructureFeature,
+    ProjectStructureUserStory,
+    ProjectStructureTaskItem,
+    ProjectStructureStatus
+} from './types';
+
+// TreeView用の統一インターフェース
+interface TreeItemData {
+    id: string;
+    subject: string;
+    type: string;
+    status: ProjectStructureStatus;
+    assignedTo?: string;
+    version?: string;
+    children?: TreeItemData[];
+}
 
 export class RedmineIssuesProvider implements vscode.TreeDataProvider<RedmineTreeItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<RedmineTreeItem | undefined | null | void> =
@@ -9,18 +26,18 @@ export class RedmineIssuesProvider implements vscode.TreeDataProvider<RedmineTre
         this._onDidChangeTreeData.event;
 
     private mcpClient: McpClient | undefined;
-    private cachedStructure: ProjectStructureItem[] | undefined;
+    private cachedData: TreeItemData[] | undefined;
 
     constructor() {}
 
     setMcpClient(client: McpClient | undefined): void {
         this.mcpClient = client;
-        this.cachedStructure = undefined;
+        this.cachedData = undefined;
         this.refresh();
     }
 
     refresh(): void {
-        this.cachedStructure = undefined;
+        this.cachedData = undefined;
         this._onDidChangeTreeData.fire();
     }
 
@@ -35,26 +52,26 @@ export class RedmineIssuesProvider implements vscode.TreeDataProvider<RedmineTre
 
         try {
             if (!element) {
-                // Root level: fetch Epic structure
-                if (!this.cachedStructure) {
+                // Root level: fetch and convert Epic structure
+                if (!this.cachedData) {
                     const response = await this.mcpClient.getProjectStructure({
                         max_depth: 4,
                         include_closed: false
                     });
                     if (response.success) {
-                        this.cachedStructure = response.structure;
+                        this.cachedData = this.convertEpicsToTreeData(response.structure);
                     } else {
                         return [new MessageTreeItem('データの取得に失敗しました', 'error')];
                     }
                 }
 
-                if (!this.cachedStructure || this.cachedStructure.length === 0) {
+                if (!this.cachedData || this.cachedData.length === 0) {
                     return [new MessageTreeItem('Epicが見つかりません', 'info')];
                 }
 
-                return this.cachedStructure.map(item => new RedmineIssueTreeItem(item));
-            } else if (element instanceof RedmineIssueTreeItem && element.item.children) {
-                return element.item.children.map(child => new RedmineIssueTreeItem(child));
+                return this.cachedData.map(item => new RedmineIssueTreeItem(item));
+            } else if (element instanceof RedmineIssueTreeItem && element.data.children) {
+                return element.data.children.map(child => new RedmineIssueTreeItem(child));
             }
 
             return [];
@@ -63,62 +80,134 @@ export class RedmineIssuesProvider implements vscode.TreeDataProvider<RedmineTre
             return [new MessageTreeItem(`エラー: ${message}`, 'error')];
         }
     }
+
+    private convertEpicsToTreeData(epics: ProjectStructureEpic[]): TreeItemData[] {
+        return epics.map(epic => ({
+            id: epic.id,
+            subject: epic.subject,
+            type: epic.type,
+            status: epic.status,
+            children: this.convertFeaturesToTreeData(epic.features)
+        }));
+    }
+
+    private convertFeaturesToTreeData(features: ProjectStructureFeature[]): TreeItemData[] {
+        return features.map(feature => ({
+            id: feature.id,
+            subject: feature.subject,
+            type: feature.type,
+            status: feature.status,
+            children: this.convertUserStoriesToTreeData(feature.user_stories)
+        }));
+    }
+
+    private convertUserStoriesToTreeData(userStories: ProjectStructureUserStory[]): TreeItemData[] {
+        return userStories.map(story => ({
+            id: story.id,
+            subject: story.subject,
+            type: story.type,
+            status: story.status,
+            assignedTo: story.assigned_to?.name,
+            version: story.version?.name,
+            children: this.convertChildrenToTreeData(story.children)
+        }));
+    }
+
+    private convertChildrenToTreeData(children?: { tasks: ProjectStructureTaskItem[]; bugs: ProjectStructureTaskItem[]; tests: ProjectStructureTaskItem[] }): TreeItemData[] | undefined {
+        if (!children) {
+            return undefined;
+        }
+
+        const result: TreeItemData[] = [];
+
+        for (const task of children.tasks) {
+            result.push({
+                id: task.id,
+                subject: task.subject,
+                type: 'Task',
+                status: task.status,
+                assignedTo: task.assigned_to?.name
+            });
+        }
+
+        for (const bug of children.bugs) {
+            result.push({
+                id: bug.id,
+                subject: bug.subject,
+                type: 'Bug',
+                status: bug.status,
+                assignedTo: bug.assigned_to?.name
+            });
+        }
+
+        for (const test of children.tests) {
+            result.push({
+                id: test.id,
+                subject: test.subject,
+                type: 'Test',
+                status: test.status,
+                assignedTo: test.assigned_to?.name
+            });
+        }
+
+        return result.length > 0 ? result : undefined;
+    }
 }
 
 export type RedmineTreeItem = RedmineIssueTreeItem | MessageTreeItem;
 
 export class RedmineIssueTreeItem extends vscode.TreeItem {
-    constructor(public readonly item: ProjectStructureItem) {
-        const hasChildren = item.children && item.children.length > 0;
+    constructor(public readonly data: TreeItemData) {
+        const hasChildren = data.children && data.children.length > 0;
         super(
-            item.subject,
+            data.subject,
             hasChildren
                 ? vscode.TreeItemCollapsibleState.Collapsed
                 : vscode.TreeItemCollapsibleState.None
         );
 
-        this.id = item.id;
+        this.id = data.id;
         this.tooltip = this.createTooltip();
         this.description = this.createDescription();
         this.iconPath = this.getIcon();
-        this.contextValue = `redmineIssue-${item.tracker.toLowerCase()}`;
+        this.contextValue = `redmineIssue-${data.type.toLowerCase()}`;
 
         this.command = {
             command: 'redmine.openIssueById',
             title: 'Open Issue',
-            arguments: [item.id]
+            arguments: [data.id]
         };
     }
 
     private createTooltip(): string {
         const parts = [
-            `#${this.item.id} ${this.item.subject}`,
-            `Tracker: ${this.item.tracker}`,
-            `Status: ${this.item.status}`
+            `#${this.data.id} ${this.data.subject}`,
+            `Type: ${this.data.type}`,
+            `Status: ${this.data.status.name}`
         ];
-        if (this.item.assigned_to) {
-            parts.push(`Assigned: ${this.item.assigned_to}`);
+        if (this.data.assignedTo) {
+            parts.push(`Assigned: ${this.data.assignedTo}`);
         }
-        if (this.item.version) {
-            parts.push(`Version: ${this.item.version}`);
+        if (this.data.version) {
+            parts.push(`Version: ${this.data.version}`);
         }
         return parts.join('\n');
     }
 
     private createDescription(): string {
         const parts: string[] = [];
-        parts.push(`#${this.item.id}`);
-        if (this.item.status) {
-            parts.push(this.item.status);
+        parts.push(`#${this.data.id}`);
+        if (this.data.status.name) {
+            parts.push(this.data.status.name);
         }
         return parts.join(' | ');
     }
 
     private getIcon(): vscode.ThemeIcon {
         // Status-based icons
-        const status = this.item.status.toLowerCase();
+        const status = this.data.status.name.toLowerCase();
 
-        if (status.includes('closed') || status.includes('クローズ')) {
+        if (this.data.status.is_closed || status.includes('closed') || status.includes('クローズ')) {
             return new vscode.ThemeIcon('check', new vscode.ThemeColor('charts.green'));
         }
         if (status.includes('progress') || status.includes('着手') || status.includes('進行')) {
@@ -131,25 +220,25 @@ export class RedmineIssueTreeItem extends vscode.TreeItem {
             return new vscode.ThemeIcon('warning', new vscode.ThemeColor('charts.orange'));
         }
 
-        // Tracker-based icons for open/new status
-        const tracker = this.item.tracker.toLowerCase();
+        // Type-based icons for open/new status
+        const type = this.data.type.toLowerCase();
 
-        if (tracker.includes('epic')) {
+        if (type.includes('epic') || type === 'エピック') {
             return new vscode.ThemeIcon('layers', new vscode.ThemeColor('charts.yellow'));
         }
-        if (tracker.includes('feature')) {
+        if (type.includes('feature') || type === '機能') {
             return new vscode.ThemeIcon('package', new vscode.ThemeColor('charts.orange'));
         }
-        if (tracker.includes('story') || tracker.includes('ストーリ')) {
+        if (type.includes('story') || type.includes('ストーリ') || type === 'userstory') {
             return new vscode.ThemeIcon('bookmark', new vscode.ThemeColor('charts.blue'));
         }
-        if (tracker.includes('task') || tracker.includes('タスク')) {
+        if (type.includes('task') || type === 'タスク') {
             return new vscode.ThemeIcon('tasklist', new vscode.ThemeColor('charts.green'));
         }
-        if (tracker.includes('bug') || tracker.includes('バグ')) {
+        if (type.includes('bug') || type === 'バグ') {
             return new vscode.ThemeIcon('bug', new vscode.ThemeColor('charts.red'));
         }
-        if (tracker.includes('test') || tracker.includes('テスト')) {
+        if (type.includes('test') || type === 'テスト') {
             return new vscode.ThemeIcon('beaker', new vscode.ThemeColor('charts.purple'));
         }
 
