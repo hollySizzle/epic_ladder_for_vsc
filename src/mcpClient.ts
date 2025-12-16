@@ -14,14 +14,23 @@ import {
 export class McpClient {
     private httpClient: AxiosInstance;
     private requestId: number = 0;
+    private defaultProject?: string;
 
     constructor(config: McpClientConfig) {
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+            'X-Redmine-API-Key': config.apiKey
+        };
+
+        if (config.defaultProject) {
+            headers['X-Default-Project'] = config.defaultProject;
+            this.defaultProject = config.defaultProject;
+        }
+
         this.httpClient = axios.create({
             baseURL: config.serverUrl,
             timeout: config.timeout ?? 30000,
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            headers
         });
     }
 

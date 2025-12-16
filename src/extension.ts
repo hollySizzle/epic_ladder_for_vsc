@@ -22,7 +22,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Register configuration change listener
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration(e => {
-            if (e.affectsConfiguration('redmine.url')) {
+            if (e.affectsConfiguration('redmine')) {
                 initializeMcpClient();
             }
         })
@@ -40,13 +40,36 @@ export function activate(context: vscode.ExtensionContext) {
 function initializeMcpClient(): void {
     const config = vscode.workspace.getConfiguration('redmine');
     const serverUrl = config.get<string>('url');
+    const apiKey = config.get<string>('apiKey');
+    const defaultProject = config.get<string>('defaultProject');
 
-    if (serverUrl) {
-        mcpClient = new McpClient({ serverUrl });
-        console.log('MCP Client initialized with URL:', serverUrl);
-    } else {
+    // Check required settings
+    const missingSettings: string[] = [];
+    if (!serverUrl) {
+        missingSettings.push('URL');
+    }
+    if (!apiKey) {
+        missingSettings.push('API Key');
+    }
+
+    if (missingSettings.length > 0) {
         mcpClient = undefined;
-        console.log('MCP Client not initialized: URL not configured');
+        console.log('MCP Client not initialized: Missing settings:', missingSettings.join(', '));
+        vscode.window.showWarningMessage(
+            `Redmine settings incomplete: ${missingSettings.join(', ')} not configured.`,
+            'Open Settings'
+        ).then(selection => {
+            if (selection === 'Open Settings') {
+                vscode.commands.executeCommand('workbench.action.openSettings', 'redmine');
+            }
+        });
+    } else {
+        mcpClient = new McpClient({
+            serverUrl: serverUrl!,
+            apiKey: apiKey!,
+            defaultProject: defaultProject || undefined
+        });
+        console.log('MCP Client initialized with URL:', serverUrl);
     }
 
     // Update TreeView provider

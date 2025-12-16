@@ -71,6 +71,11 @@
           "type": "string",
           "default": "",
           "description": "Redmine API key"
+        },
+        "redmine.defaultProject": {
+          "type": "string",
+          "default": "",
+          "description": "Default project identifier (e.g., my-project)"
         }
       }
     }

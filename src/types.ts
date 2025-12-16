@@ -162,5 +162,7 @@ export interface UpdateIssueStatusResponse {
 // MCP Client Configuration
 export interface McpClientConfig {
     serverUrl: string;
+    apiKey: string;
+    defaultProject?: string;
     timeout?: number;
 }
