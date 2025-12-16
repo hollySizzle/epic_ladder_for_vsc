@@ -1,0 +1,91 @@
+{
+  "name": "redmine-epic-ladder",
+  "displayName": "Redmine Epic Ladder",
+  "description": "VS Code extension for Redmine ticket management",
+  "version": "0.0.1",
+  "publisher": "your-publisher-name",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "redmine-explorer",
+          "title": "Redmine",
+          "icon": "resources/redmine.svg"
+        }
+      ]
+    },
+    "views": {
+      "redmine-explorer": [
+        {
+          "id": "redmineIssues",
+          "name": "Issues",
+          "icon": "resources/redmine.svg"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "redmine.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "redmine.openIssue",
+        "title": "Open Issue Details"
+      },
+      {
+        "command": "redmine.configure",
+        "title": "Configure Redmine Connection"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "redmine.refresh",
+          "when": "view == redmineIssues",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Redmine",
+      "properties": {
+        "redmine.url": {
+          "type": "string",
+          "default": "",
+          "description": "Redmine server URL (e.g., https://redmine.example.com)"
+        },
+        "redmine.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Redmine API key"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  }
+}
