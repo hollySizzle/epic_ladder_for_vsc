@@ -135,7 +135,16 @@ export class EpicLadderWebviewProvider {
             </div>
         </header>
 
-        <div class="filters">
+        <button class="filter-toggle" onclick="toggleFilters()">
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <span>Filters</span>
+        </button>
+
+        <div class="filters" id="filtersPanel">
             <div class="filter-group">
                 <label for="searchInput">Search</label>
                 <input type="text" id="searchInput" placeholder="Search issues..."
@@ -249,6 +258,13 @@ export class EpicLadderWebviewProvider {
                 story.children.tests.length > 0
             );
 
+            const metaInfo = (story.assigned_to || story.version) ? `
+                <div class="meta-info">
+                    ${story.assigned_to ? `<span class="assignee">@${this.escapeHtml(story.assigned_to.name)}</span>` : ''}
+                    ${story.version ? `<span class="version">${this.escapeHtml(story.version.name)}</span>` : ''}
+                </div>
+            ` : '';
+
             return `
                 <div class="tree-item tree-item-story" data-id="${story.id}">
                     <div class="tree-item-header ${hasChildren ? '' : 'no-children'}" onclick="${hasChildren ? 'toggleCollapse(this)' : ''}">
@@ -257,8 +273,7 @@ export class EpicLadderWebviewProvider {
                         <span class="status-badge ${this.getStatusClass(story.status)}">${this.escapeHtml(story.status.name)}</span>
                         <span class="issue-id" onclick="event.stopPropagation(); openIssue('${story.id}')">#${story.id}</span>
                         <span class="issue-subject">${this.escapeHtml(story.subject)}</span>
-                        ${story.assigned_to ? `<span class="assignee">@${this.escapeHtml(story.assigned_to.name)}</span>` : ''}
-                        ${story.version ? `<span class="version">${this.escapeHtml(story.version.name)}</span>` : ''}
+                        ${metaInfo}
                     </div>
                     ${hasChildren ? `
                         <div class="tree-children">
@@ -293,6 +308,12 @@ export class EpicLadderWebviewProvider {
         type: string,
         badgeClass: string
     ): string {
+        const metaInfo = item.assigned_to ? `
+            <div class="meta-info">
+                <span class="assignee">@${this.escapeHtml(item.assigned_to.name)}</span>
+            </div>
+        ` : '';
+
         return `
             <div class="tree-item tree-item-leaf" data-id="${item.id}">
                 <div class="tree-item-header no-children">
@@ -301,7 +322,7 @@ export class EpicLadderWebviewProvider {
                     <span class="status-badge ${this.getStatusClass(item.status)}">${this.escapeHtml(item.status.name)}</span>
                     <span class="issue-id" onclick="openIssue('${item.id}')">#${item.id}</span>
                     <span class="issue-subject">${this.escapeHtml(item.subject)}</span>
-                    ${item.assigned_to ? `<span class="assignee">@${this.escapeHtml(item.assigned_to.name)}</span>` : ''}
+                    ${metaInfo}
                 </div>
             </div>
         `;
@@ -336,6 +357,7 @@ export class EpicLadderWebviewProvider {
                 --input-border: var(--vscode-input-border);
                 --button-bg: var(--vscode-button-background);
                 --button-fg: var(--vscode-button-foreground);
+                --indent-size: 24px;
             }
 
             * {
@@ -349,26 +371,32 @@ export class EpicLadderWebviewProvider {
                 font-size: var(--vscode-font-size);
                 color: var(--text-color);
                 background: var(--bg-color);
-                padding: 16px;
+                padding: 12px;
                 line-height: 1.5;
             }
 
             .container {
                 max-width: 100%;
+                container-type: inline-size;
             }
 
             .header {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                margin-bottom: 16px;
+                margin-bottom: 12px;
                 padding-bottom: 8px;
                 border-bottom: 1px solid var(--border-color);
             }
 
             .header h1 {
-                font-size: 1.4em;
+                font-size: 1.2em;
                 font-weight: 600;
+            }
+
+            .header-actions {
+                display: flex;
+                gap: 4px;
             }
 
             .btn {
@@ -390,24 +418,60 @@ export class EpicLadderWebviewProvider {
                 font-size: 16px;
             }
 
+            /* Filter toggle button (narrow width) */
+            .filter-toggle {
+                display: none;
+                align-items: center;
+                gap: 6px;
+                background: var(--vscode-sideBar-background);
+                border: 1px solid var(--border-color);
+                padding: 8px 12px;
+                border-radius: 6px;
+                cursor: pointer;
+                color: var(--text-color);
+                font-size: 13px;
+                margin-bottom: 8px;
+                width: 100%;
+            }
+
+            .filter-toggle .hamburger {
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+            }
+
+            .filter-toggle .hamburger span {
+                display: block;
+                width: 16px;
+                height: 2px;
+                background: var(--text-color);
+                border-radius: 1px;
+            }
+
             .filters {
                 display: flex;
-                gap: 16px;
+                gap: 12px;
                 flex-wrap: wrap;
-                margin-bottom: 16px;
+                margin-bottom: 12px;
                 padding: 12px;
                 background: var(--vscode-sideBar-background);
                 border-radius: 6px;
+            }
+
+            .filters.collapsed {
+                display: none;
             }
 
             .filter-group {
                 display: flex;
                 flex-direction: column;
                 gap: 4px;
+                flex: 1;
+                min-width: 120px;
             }
 
             .filter-group label {
-                font-size: 11px;
+                font-size: 10px;
                 text-transform: uppercase;
                 opacity: 0.8;
             }
@@ -417,10 +481,10 @@ export class EpicLadderWebviewProvider {
                 background: var(--input-bg);
                 color: var(--text-color);
                 border: 1px solid var(--input-border);
-                padding: 6px 10px;
+                padding: 6px 8px;
                 border-radius: 4px;
                 font-size: 13px;
-                min-width: 150px;
+                width: 100%;
             }
 
             .filter-group input:focus,
@@ -430,24 +494,26 @@ export class EpicLadderWebviewProvider {
 
             .summary {
                 display: flex;
-                gap: 16px;
+                gap: 8px;
                 flex-wrap: wrap;
-                margin-bottom: 16px;
-                padding: 8px 0;
+                margin-bottom: 12px;
+                padding: 8px;
+                background: var(--vscode-sideBar-background);
+                border-radius: 6px;
             }
 
             .summary-item {
                 display: flex;
                 align-items: center;
-                gap: 6px;
-                font-size: 12px;
+                gap: 4px;
+                font-size: 11px;
             }
 
             .badge {
                 display: inline-block;
-                padding: 2px 8px;
+                padding: 2px 6px;
                 border-radius: 10px;
-                font-size: 11px;
+                font-size: 10px;
                 font-weight: 600;
             }
 
@@ -475,8 +541,8 @@ export class EpicLadderWebviewProvider {
             .tree-item-header {
                 display: flex;
                 align-items: center;
-                gap: 8px;
-                padding: 8px 12px;
+                gap: 6px;
+                padding: 8px 10px;
                 cursor: pointer;
                 transition: background 0.15s;
             }
@@ -493,11 +559,13 @@ export class EpicLadderWebviewProvider {
                 font-size: 10px;
                 transition: transform 0.2s;
                 width: 12px;
+                flex-shrink: 0;
                 text-align: center;
             }
 
             .collapse-icon-placeholder {
                 width: 12px;
+                flex-shrink: 0;
             }
 
             .tree-item.collapsed .collapse-icon {
@@ -509,21 +577,23 @@ export class EpicLadderWebviewProvider {
             }
 
             .tree-children {
-                padding-left: 24px;
+                padding-left: var(--indent-size);
                 border-top: 1px solid var(--border-color);
             }
 
             .type-badge {
-                font-size: 10px;
-                padding: 1px 6px;
+                font-size: 9px;
+                padding: 1px 5px;
                 border-radius: 4px;
                 font-weight: 500;
+                flex-shrink: 0;
             }
 
             .status-badge {
-                font-size: 10px;
-                padding: 1px 6px;
+                font-size: 9px;
+                padding: 1px 5px;
                 border-radius: 4px;
+                flex-shrink: 0;
             }
 
             .status-open { background: var(--vscode-statusBarItem-warningBackground); color: var(--vscode-statusBarItem-warningForeground); }
@@ -534,9 +604,10 @@ export class EpicLadderWebviewProvider {
 
             .issue-id {
                 font-family: monospace;
-                font-size: 12px;
+                font-size: 11px;
                 color: var(--vscode-textLink-foreground);
                 cursor: pointer;
+                flex-shrink: 0;
             }
 
             .issue-id:hover {
@@ -548,24 +619,39 @@ export class EpicLadderWebviewProvider {
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
+                min-width: 0;
+            }
+
+            .meta-info {
+                display: flex;
+                gap: 6px;
+                flex-shrink: 0;
             }
 
             .assignee {
-                font-size: 11px;
-                opacity: 0.7;
+                font-size: 10px;
+                opacity: 0.8;
                 background: var(--vscode-badge-background);
                 color: var(--vscode-badge-foreground);
-                padding: 1px 6px;
+                padding: 1px 5px;
                 border-radius: 4px;
+                max-width: 80px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
             }
 
             .version {
-                font-size: 11px;
-                opacity: 0.7;
+                font-size: 10px;
+                opacity: 0.8;
                 background: var(--vscode-badge-background);
                 color: var(--vscode-badge-foreground);
-                padding: 1px 6px;
+                padding: 1px 5px;
                 border-radius: 4px;
+                max-width: 80px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
             }
 
             .empty-state {
@@ -581,6 +667,145 @@ export class EpicLadderWebviewProvider {
             .tree-item.search-match .issue-subject {
                 background: var(--vscode-editor-findMatchHighlightBackground);
             }
+
+            /* ========================================
+               Narrow Width Optimization (< 500px)
+               ======================================== */
+            @container (max-width: 500px) {
+                body {
+                    padding: 8px;
+                }
+
+                :root {
+                    --indent-size: 10px;
+                }
+
+                .header {
+                    margin-bottom: 8px;
+                }
+
+                .header h1 {
+                    font-size: 1em;
+                }
+
+                /* Show filter toggle button */
+                .filter-toggle {
+                    display: flex;
+                }
+
+                /* Filters become collapsible */
+                .filters {
+                    flex-direction: column;
+                    gap: 8px;
+                    padding: 10px;
+                    margin-bottom: 8px;
+                }
+
+                .filter-group {
+                    min-width: unset;
+                }
+
+                /* Summary wraps into 2 rows */
+                .summary {
+                    gap: 6px;
+                    padding: 6px 8px;
+                    margin-bottom: 8px;
+                }
+
+                .summary-item {
+                    font-size: 10px;
+                }
+
+                .badge {
+                    padding: 1px 4px;
+                    font-size: 9px;
+                }
+
+                /* Tree item: multi-line layout */
+                .tree-item-header {
+                    flex-wrap: wrap;
+                    padding: 8px;
+                    gap: 4px;
+                }
+
+                /* Row 1: Type badge + Subject (wrap enabled) */
+                .issue-subject {
+                    order: 1;
+                    flex-basis: calc(100% - 40px);
+                    white-space: normal;
+                    word-break: break-word;
+                    line-height: 1.3;
+                }
+
+                .collapse-icon,
+                .collapse-icon-placeholder {
+                    order: 0;
+                }
+
+                .type-badge {
+                    order: 2;
+                }
+
+                /* Row 2: ID, Status, Assignee, Version */
+                .issue-id {
+                    order: 3;
+                    font-size: 10px;
+                }
+
+                .status-badge {
+                    order: 4;
+                }
+
+                .meta-info {
+                    order: 5;
+                    flex-basis: 100%;
+                    margin-top: 2px;
+                }
+
+                .assignee,
+                .version {
+                    font-size: 9px;
+                    max-width: 100px;
+                }
+
+                /* Reduce tree indent */
+                .tree-children {
+                    padding-left: 10px;
+                }
+            }
+
+            /* Extra narrow (< 350px) */
+            @container (max-width: 350px) {
+                .header h1 {
+                    font-size: 0.9em;
+                }
+
+                .tree-item-header {
+                    padding: 6px;
+                }
+
+                .type-badge {
+                    font-size: 8px;
+                    padding: 1px 4px;
+                }
+
+                .status-badge {
+                    font-size: 8px;
+                    padding: 1px 4px;
+                }
+
+                .issue-id {
+                    font-size: 9px;
+                }
+
+                .tree-children {
+                    padding-left: 8px;
+                }
+
+                .summary-item {
+                    font-size: 9px;
+                }
+            }
         `;
     }
 
@@ -588,10 +813,35 @@ export class EpicLadderWebviewProvider {
         return `
             const vscode = acquireVsCodeApi();
             let searchTimeout;
+            let filtersCollapsed = true;
 
             function refresh() {
                 vscode.postMessage({ command: 'refresh' });
             }
+
+            function toggleFilters() {
+                const filtersPanel = document.getElementById('filtersPanel');
+                if (filtersPanel) {
+                    filtersCollapsed = !filtersCollapsed;
+                    filtersPanel.classList.toggle('collapsed', filtersCollapsed);
+                }
+            }
+
+            // Initialize filters state on narrow screens
+            function initFilters() {
+                const container = document.querySelector('.container');
+                if (container && container.offsetWidth <= 500) {
+                    const filtersPanel = document.getElementById('filtersPanel');
+                    if (filtersPanel) {
+                        filtersPanel.classList.add('collapsed');
+                    }
+                } else {
+                    filtersCollapsed = false;
+                }
+            }
+
+            // Run on load
+            initFilters();
 
             function openIssue(issueId) {
                 vscode.postMessage({ command: 'openIssue', issueId });
