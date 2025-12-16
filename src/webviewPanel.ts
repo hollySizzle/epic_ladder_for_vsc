@@ -1038,6 +1038,115 @@ export class EpicLadderWebviewProvider {
                 background: var(--vscode-list-activeSelectionBackground);
             }
 
+            /* ========================================
+               Comments Section Styles
+               ======================================== */
+            .detail-comments {
+                margin-top: 12px;
+            }
+
+            .detail-comments-label {
+                font-size: 10px;
+                text-transform: uppercase;
+                color: var(--vscode-descriptionForeground);
+                margin-bottom: 6px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            .comments-count {
+                background: var(--vscode-badge-background);
+                color: var(--vscode-badge-foreground);
+                padding: 1px 6px;
+                border-radius: 10px;
+                font-size: 10px;
+            }
+
+            .comments-list {
+                max-height: 300px;
+                overflow-y: auto;
+                border: 1px solid var(--border-color);
+                border-radius: 4px;
+                background: var(--vscode-editor-background);
+            }
+
+            .comment-item {
+                padding: 10px;
+                border-bottom: 1px solid var(--border-color);
+            }
+
+            .comment-item:last-child {
+                border-bottom: none;
+            }
+
+            .comment-header {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 6px;
+                flex-wrap: wrap;
+            }
+
+            .comment-author {
+                font-weight: 600;
+                font-size: 12px;
+                color: var(--vscode-textLink-foreground);
+            }
+
+            .comment-date {
+                font-size: 10px;
+                color: var(--vscode-descriptionForeground);
+            }
+
+            .comment-body {
+                font-size: 12px;
+                line-height: 1.5;
+            }
+
+            .comment-body:empty {
+                display: none;
+            }
+
+            /* Change details (status changes, etc.) */
+            .comment-changes {
+                margin-top: 6px;
+            }
+
+            .change-item {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                font-size: 11px;
+                color: var(--vscode-descriptionForeground);
+                padding: 2px 0;
+            }
+
+            .change-label {
+                font-weight: 500;
+            }
+
+            .change-old {
+                text-decoration: line-through;
+                opacity: 0.7;
+            }
+
+            .change-arrow {
+                color: var(--vscode-textLink-foreground);
+            }
+
+            .change-new {
+                color: var(--text-color);
+            }
+
+            .no-comments {
+                padding: 16px;
+                text-align: center;
+                color: var(--vscode-descriptionForeground);
+                font-size: 12px;
+                font-style: italic;
+            }
+
             @container (max-width: 500px) {
                 .issue-detail-panel {
                     padding: 10px;
@@ -1054,6 +1163,22 @@ export class EpicLadderWebviewProvider {
                 .detail-description-content {
                     max-height: 150px;
                     padding: 8px;
+                }
+
+                .comments-list {
+                    max-height: 200px;
+                }
+
+                .comment-item {
+                    padding: 8px;
+                }
+
+                .comment-author {
+                    font-size: 11px;
+                }
+
+                .comment-body {
+                    font-size: 11px;
                 }
             }
         `;
@@ -1267,6 +1392,7 @@ export class EpicLadderWebviewProvider {
 
             function renderDetailPanel(panel, detail) {
                 const issue = detail.issue;
+                const journals = detail.journals || [];
                 const assignee = issue.assigned_to ? issue.assigned_to.name : 'Unassigned';
                 const version = issue.fixed_version ? issue.fixed_version.name : 'None';
                 const doneRatio = issue.done_ratio || 0;
@@ -1300,9 +1426,100 @@ export class EpicLadderWebviewProvider {
                         '<div class="detail-description-label">Description</div>' +
                         '<div class="detail-description-content">' + renderMarkdown(issue.description || '') + '</div>' +
                     '</div>' +
+                    '<div class="detail-comments">' +
+                        '<div class="detail-comments-label">' +
+                            'Comments & History' +
+                            '<span class="comments-count">' + journals.length + '</span>' +
+                        '</div>' +
+                        '<div class="comments-list">' +
+                            renderJournals(journals) +
+                        '</div>' +
+                    '</div>' +
                     '<div class="detail-actions">' +
                         '<button class="btn" onclick="openInBrowser(\\'' + escapeHtml(issue.url) + '\\')">Open in Browser</button>' +
                     '</div>';
+            }
+
+            function renderJournals(journals) {
+                if (!journals || journals.length === 0) {
+                    return '<div class="no-comments">No comments or changes</div>';
+                }
+
+                return journals.map(function(journal) {
+                    const hasNotes = journal.notes && journal.notes.trim().length > 0;
+                    const hasChanges = journal.details && journal.details.length > 0;
+
+                    // Skip empty journals
+                    if (!hasNotes && !hasChanges) {
+                        return '';
+                    }
+
+                    const date = formatDate(journal.created_on);
+                    const author = journal.user ? journal.user.name : 'Unknown';
+
+                    let html = '<div class="comment-item">';
+                    html += '<div class="comment-header">';
+                    html += '<span class="comment-author">' + escapeHtml(author) + '</span>';
+                    html += '<span class="comment-date">' + escapeHtml(date) + '</span>';
+                    html += '</div>';
+
+                    if (hasNotes) {
+                        html += '<div class="comment-body">' + renderMarkdown(journal.notes) + '</div>';
+                    }
+
+                    if (hasChanges) {
+                        html += '<div class="comment-changes">';
+                        journal.details.forEach(function(detail) {
+                            html += renderChangeDetail(detail);
+                        });
+                        html += '</div>';
+                    }
+
+                    html += '</div>';
+                    return html;
+                }).join('');
+            }
+
+            function renderChangeDetail(detail) {
+                const fieldName = getFieldDisplayName(detail.name);
+                const oldVal = detail.old_value || '(none)';
+                const newVal = detail.new_value || '(none)';
+
+                return '<div class="change-item">' +
+                    '<span class="change-label">' + escapeHtml(fieldName) + ':</span>' +
+                    '<span class="change-old">' + escapeHtml(oldVal) + '</span>' +
+                    '<span class="change-arrow">→</span>' +
+                    '<span class="change-new">' + escapeHtml(newVal) + '</span>' +
+                '</div>';
+            }
+
+            function getFieldDisplayName(fieldName) {
+                const fieldMap = {
+                    'status_id': 'Status',
+                    'assigned_to_id': 'Assignee',
+                    'fixed_version_id': 'Version',
+                    'done_ratio': 'Progress',
+                    'priority_id': 'Priority',
+                    'tracker_id': 'Tracker',
+                    'subject': 'Subject',
+                    'description': 'Description',
+                    'start_date': 'Start Date',
+                    'due_date': 'Due Date',
+                    'parent_id': 'Parent',
+                    'estimated_hours': 'Estimated Hours'
+                };
+                return fieldMap[fieldName] || fieldName;
+            }
+
+            function formatDate(dateString) {
+                if (!dateString) return '';
+                const date = new Date(dateString);
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                return year + '-' + month + '-' + day + ' ' + hours + ':' + minutes;
             }
 
             function openInBrowser(url) {
