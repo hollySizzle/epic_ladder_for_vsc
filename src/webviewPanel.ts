@@ -109,6 +109,29 @@ export class EpicLadderWebviewProvider {
                     }
                 }
                 break;
+            case 'updateStatus':
+                if (typeof message.issueId === 'string' && typeof message.statusName === 'string' && this.mcpClient) {
+                    try {
+                        const result = await this.mcpClient.updateIssueStatus(
+                            message.issueId,
+                            message.statusName,
+                            true
+                        );
+                        this.panel?.webview.postMessage({
+                            command: 'statusUpdateSuccess',
+                            issueId: message.issueId,
+                            newStatus: result.new_status
+                        });
+                    } catch (error) {
+                        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                        this.panel?.webview.postMessage({
+                            command: 'statusUpdateError',
+                            issueId: message.issueId,
+                            error: errorMessage
+                        });
+                    }
+                }
+                break;
         }
     }
 
@@ -251,7 +274,7 @@ export class EpicLadderWebviewProvider {
                 <div class="tree-item-header" onclick="toggleDetail(event, '${epic.id}')">
                     <span class="collapse-icon" onclick="event.stopPropagation(); toggleCollapse(this.parentElement)">&#9662;</span>
                     <span class="type-badge badge-epic">Epic</span>
-                    <span class="status-badge ${this.getStatusClass(epic.status)}">${this.escapeHtml(epic.status.name)}</span>
+                    ${this.renderStatusBadge(epic.id, epic.status)}
                     <span class="issue-id" onclick="event.stopPropagation(); openIssue('${epic.id}')">#${epic.id}</span>
                     <span class="issue-subject">${this.escapeHtml(epic.subject)}</span>
                 </div>
@@ -272,7 +295,7 @@ export class EpicLadderWebviewProvider {
                 <div class="tree-item-header" onclick="toggleDetail(event, '${feature.id}')">
                     <span class="collapse-icon" onclick="event.stopPropagation(); toggleCollapse(this.parentElement)">&#9662;</span>
                     <span class="type-badge badge-feature">Feature</span>
-                    <span class="status-badge ${this.getStatusClass(feature.status)}">${this.escapeHtml(feature.status.name)}</span>
+                    ${this.renderStatusBadge(feature.id, feature.status)}
                     <span class="issue-id" onclick="event.stopPropagation(); openIssue('${feature.id}')">#${feature.id}</span>
                     <span class="issue-subject">${this.escapeHtml(feature.subject)}</span>
                 </div>
@@ -307,7 +330,7 @@ export class EpicLadderWebviewProvider {
                     <div class="tree-item-header ${hasChildren ? '' : 'no-children'}" onclick="toggleDetail(event, '${story.id}')">
                         ${hasChildren ? `<span class="collapse-icon" onclick="event.stopPropagation(); toggleCollapse(this.parentElement)">&#9662;</span>` : '<span class="collapse-icon-placeholder"></span>'}
                         <span class="type-badge badge-story">Story</span>
-                        <span class="status-badge ${this.getStatusClass(story.status)}">${this.escapeHtml(story.status.name)}</span>
+                        ${this.renderStatusBadge(story.id, story.status)}
                         <span class="issue-id" onclick="event.stopPropagation(); openIssue('${story.id}')">#${story.id}</span>
                         <span class="issue-subject">${this.escapeHtml(story.subject)}</span>
                         ${metaInfo}
@@ -356,7 +379,7 @@ export class EpicLadderWebviewProvider {
                 <div class="tree-item-header no-children" onclick="toggleDetail(event, '${item.id}')">
                     <span class="collapse-icon-placeholder"></span>
                     <span class="type-badge ${badgeClass}">${type}</span>
-                    <span class="status-badge ${this.getStatusClass(item.status)}">${this.escapeHtml(item.status.name)}</span>
+                    ${this.renderStatusBadge(item.id, item.status)}
                     <span class="issue-id" onclick="event.stopPropagation(); openIssue('${item.id}')">#${item.id}</span>
                     <span class="issue-subject">${this.escapeHtml(item.subject)}</span>
                     ${metaInfo}
@@ -380,6 +403,26 @@ export class EpicLadderWebviewProvider {
             return 'status-blocked';
         }
         return 'status-open';
+    }
+
+    private renderStatusBadge(issueId: string, status: { name: string; is_closed: boolean }): string {
+        const statusOptions = ['未着手', '着手中', 'クローズ'];
+        const optionsHtml = statusOptions.map(opt =>
+            `<div class="status-option" data-status="${this.escapeHtml(opt)}">${this.escapeHtml(opt)}</div>`
+        ).join('');
+
+        return `
+            <div class="status-dropdown" data-issue-id="${issueId}">
+                <span class="status-badge status-clickable ${this.getStatusClass(status)}"
+                      onclick="event.stopPropagation(); toggleStatusDropdown(event, '${issueId}')">
+                    ${this.escapeHtml(status.name)}
+                    <span class="status-dropdown-arrow">▼</span>
+                </span>
+                <div class="status-dropdown-menu" id="statusMenu-${issueId}">
+                    ${optionsHtml}
+                </div>
+            </div>
+        `;
     }
 
     private getStyles(): string {
@@ -638,6 +681,84 @@ export class EpicLadderWebviewProvider {
             .status-review { background: #a855f7; color: #fff; }
             .status-blocked { background: #f97316; color: #000; }
             .status-closed { background: #22c55e; color: #000; }
+
+            /* Status Dropdown Styles */
+            .status-dropdown {
+                position: relative;
+                display: inline-block;
+                flex-shrink: 0;
+            }
+
+            .status-clickable {
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                gap: 3px;
+                transition: opacity 0.15s;
+            }
+
+            .status-clickable:hover {
+                opacity: 0.85;
+            }
+
+            .status-dropdown-arrow {
+                font-size: 6px;
+                opacity: 0.7;
+            }
+
+            .status-dropdown-menu {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                z-index: 1000;
+                min-width: 100px;
+                background: var(--vscode-dropdown-background);
+                border: 1px solid var(--vscode-dropdown-border);
+                border-radius: 4px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+                margin-top: 2px;
+            }
+
+            .status-dropdown-menu.open {
+                display: block;
+            }
+
+            .status-option {
+                padding: 6px 10px;
+                font-size: 11px;
+                cursor: pointer;
+                white-space: nowrap;
+            }
+
+            .status-option:hover {
+                background: var(--vscode-list-hoverBackground);
+            }
+
+            .status-option:first-child {
+                border-radius: 4px 4px 0 0;
+            }
+
+            .status-option:last-child {
+                border-radius: 0 0 4px 4px;
+            }
+
+            .status-updating {
+                opacity: 0.6;
+                pointer-events: none;
+            }
+
+            .status-updating::after {
+                content: '';
+                display: inline-block;
+                width: 8px;
+                height: 8px;
+                margin-left: 4px;
+                border: 1px solid currentColor;
+                border-top-color: transparent;
+                border-radius: 50%;
+                animation: spin 0.6s linear infinite;
+            }
 
             .issue-id {
                 font-family: monospace;
@@ -1343,6 +1464,64 @@ export class EpicLadderWebviewProvider {
             // Run on load
             initFilters();
 
+            // ========================================
+            // Status Dropdown Functions
+            // ========================================
+            let currentOpenStatusMenu = null;
+
+            function toggleStatusDropdown(event, issueId) {
+                event.stopPropagation();
+
+                const menu = document.getElementById('statusMenu-' + issueId);
+                if (!menu) return;
+
+                // Close any other open menu
+                if (currentOpenStatusMenu && currentOpenStatusMenu !== menu) {
+                    currentOpenStatusMenu.classList.remove('open');
+                }
+
+                // Toggle current menu
+                const isOpen = menu.classList.toggle('open');
+                currentOpenStatusMenu = isOpen ? menu : null;
+
+                // Add click handlers to options
+                if (isOpen) {
+                    menu.querySelectorAll('.status-option').forEach(option => {
+                        option.onclick = function(e) {
+                            e.stopPropagation();
+                            const statusName = this.getAttribute('data-status');
+                            updateStatus(issueId, statusName);
+                            menu.classList.remove('open');
+                            currentOpenStatusMenu = null;
+                        };
+                    });
+                }
+            }
+
+            function updateStatus(issueId, statusName) {
+                // Find the status badge and show loading state
+                const dropdown = document.querySelector('.status-dropdown[data-issue-id="' + issueId + '"]');
+                const badge = dropdown?.querySelector('.status-badge');
+
+                if (badge) {
+                    badge.classList.add('status-updating');
+                }
+
+                vscode.postMessage({
+                    command: 'updateStatus',
+                    issueId: issueId,
+                    statusName: statusName
+                });
+            }
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(event) {
+                if (currentOpenStatusMenu && !event.target.closest('.status-dropdown')) {
+                    currentOpenStatusMenu.classList.remove('open');
+                    currentOpenStatusMenu = null;
+                }
+            });
+
             function openIssue(issueId) {
                 vscode.postMessage({ command: 'openIssue', issueId });
             }
@@ -1516,8 +1695,60 @@ export class EpicLadderWebviewProvider {
                     onCommentSuccess(message.issueId);
                 } else if (message.command === 'commentError') {
                     onCommentError(message.issueId, message.error);
+                } else if (message.command === 'statusUpdateSuccess') {
+                    onStatusUpdateSuccess(message.issueId, message.newStatus);
+                } else if (message.command === 'statusUpdateError') {
+                    onStatusUpdateError(message.issueId, message.error);
                 }
             });
+
+            function onStatusUpdateSuccess(issueId, newStatus) {
+                const dropdown = document.querySelector('.status-dropdown[data-issue-id="' + issueId + '"]');
+                const badge = dropdown?.querySelector('.status-badge');
+
+                if (badge) {
+                    badge.classList.remove('status-updating');
+
+                    // Update badge text (keep the arrow)
+                    const arrow = badge.querySelector('.status-dropdown-arrow');
+                    badge.innerHTML = escapeHtml(newStatus) + (arrow ? arrow.outerHTML : '<span class="status-dropdown-arrow">▼</span>');
+
+                    // Update status class
+                    badge.className = 'status-badge status-clickable ' + getStatusClassFromName(newStatus);
+                }
+
+                // Clear detail cache for this issue
+                delete detailCache[issueId];
+            }
+
+            function onStatusUpdateError(issueId, errorMessage) {
+                const dropdown = document.querySelector('.status-dropdown[data-issue-id="' + issueId + '"]');
+                const badge = dropdown?.querySelector('.status-badge');
+
+                if (badge) {
+                    badge.classList.remove('status-updating');
+                }
+
+                // Show error notification
+                alert('Failed to update status: ' + errorMessage);
+            }
+
+            function getStatusClassFromName(statusName) {
+                const name = statusName.toLowerCase();
+                if (name.includes('close') || name.includes('クローズ') || name.includes('完了')) {
+                    return 'status-closed';
+                }
+                if (name.includes('progress') || name.includes('着手') || name.includes('進行')) {
+                    return 'status-in-progress';
+                }
+                if (name.includes('review') || name.includes('レビュー')) {
+                    return 'status-review';
+                }
+                if (name.includes('block') || name.includes('保留')) {
+                    return 'status-blocked';
+                }
+                return 'status-open';
+            }
 
             function renderDetailPanel(panel, detail) {
                 const issue = detail.issue;
