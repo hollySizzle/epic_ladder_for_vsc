@@ -72,6 +72,25 @@ export class EpicLadderWebviewProvider {
             case 'filter':
                 await this.updateContent(message as FilterOptions);
                 break;
+            case 'getIssueDetail':
+                if (typeof message.issueId === 'string' && this.mcpClient) {
+                    try {
+                        const detail = await this.mcpClient.getIssueDetail(message.issueId);
+                        this.panel?.webview.postMessage({
+                            command: 'issueDetail',
+                            issueId: message.issueId,
+                            detail: detail
+                        });
+                    } catch (error) {
+                        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                        this.panel?.webview.postMessage({
+                            command: 'issueDetailError',
+                            issueId: message.issueId,
+                            error: errorMessage
+                        });
+                    }
+                }
+                break;
         }
     }
 
@@ -211,8 +230,8 @@ export class EpicLadderWebviewProvider {
 
         return epics.map(epic => `
             <div class="tree-item tree-item-epic" data-id="${epic.id}">
-                <div class="tree-item-header" onclick="toggleCollapse(this)">
-                    <span class="collapse-icon">&#9662;</span>
+                <div class="tree-item-header" onclick="toggleDetail(event, '${epic.id}')">
+                    <span class="collapse-icon" onclick="event.stopPropagation(); toggleCollapse(this.parentElement)">&#9662;</span>
                     <span class="type-badge badge-epic">Epic</span>
                     <span class="status-badge ${this.getStatusClass(epic.status)}">${this.escapeHtml(epic.status.name)}</span>
                     <span class="issue-id" onclick="event.stopPropagation(); openIssue('${epic.id}')">#${epic.id}</span>
@@ -232,8 +251,8 @@ export class EpicLadderWebviewProvider {
 
         return features.map(feature => `
             <div class="tree-item tree-item-feature" data-id="${feature.id}">
-                <div class="tree-item-header" onclick="toggleCollapse(this)">
-                    <span class="collapse-icon">&#9662;</span>
+                <div class="tree-item-header" onclick="toggleDetail(event, '${feature.id}')">
+                    <span class="collapse-icon" onclick="event.stopPropagation(); toggleCollapse(this.parentElement)">&#9662;</span>
                     <span class="type-badge badge-feature">Feature</span>
                     <span class="status-badge ${this.getStatusClass(feature.status)}">${this.escapeHtml(feature.status.name)}</span>
                     <span class="issue-id" onclick="event.stopPropagation(); openIssue('${feature.id}')">#${feature.id}</span>
@@ -267,8 +286,8 @@ export class EpicLadderWebviewProvider {
 
             return `
                 <div class="tree-item tree-item-story" data-id="${story.id}">
-                    <div class="tree-item-header ${hasChildren ? '' : 'no-children'}" onclick="${hasChildren ? 'toggleCollapse(this)' : ''}">
-                        ${hasChildren ? '<span class="collapse-icon">&#9662;</span>' : '<span class="collapse-icon-placeholder"></span>'}
+                    <div class="tree-item-header ${hasChildren ? '' : 'no-children'}" onclick="toggleDetail(event, '${story.id}')">
+                        ${hasChildren ? `<span class="collapse-icon" onclick="event.stopPropagation(); toggleCollapse(this.parentElement)">&#9662;</span>` : '<span class="collapse-icon-placeholder"></span>'}
                         <span class="type-badge badge-story">Story</span>
                         <span class="status-badge ${this.getStatusClass(story.status)}">${this.escapeHtml(story.status.name)}</span>
                         <span class="issue-id" onclick="event.stopPropagation(); openIssue('${story.id}')">#${story.id}</span>
@@ -316,11 +335,11 @@ export class EpicLadderWebviewProvider {
 
         return `
             <div class="tree-item tree-item-leaf" data-id="${item.id}">
-                <div class="tree-item-header no-children">
+                <div class="tree-item-header no-children" onclick="toggleDetail(event, '${item.id}')">
                     <span class="collapse-icon-placeholder"></span>
                     <span class="type-badge ${badgeClass}">${type}</span>
                     <span class="status-badge ${this.getStatusClass(item.status)}">${this.escapeHtml(item.status.name)}</span>
-                    <span class="issue-id" onclick="openIssue('${item.id}')">#${item.id}</span>
+                    <span class="issue-id" onclick="event.stopPropagation(); openIssue('${item.id}')">#${item.id}</span>
                     <span class="issue-subject">${this.escapeHtml(item.subject)}</span>
                     ${metaInfo}
                 </div>
@@ -806,6 +825,237 @@ export class EpicLadderWebviewProvider {
                     font-size: 9px;
                 }
             }
+
+            /* ========================================
+               Issue Detail Panel Styles
+               ======================================== */
+            .issue-detail-panel {
+                background: var(--vscode-sideBar-background);
+                border-top: 1px solid var(--border-color);
+                padding: 12px;
+                display: none;
+                animation: slideDown 0.2s ease-out;
+            }
+
+            .issue-detail-panel.open {
+                display: block;
+            }
+
+            @keyframes slideDown {
+                from {
+                    opacity: 0;
+                    max-height: 0;
+                }
+                to {
+                    opacity: 1;
+                    max-height: 500px;
+                }
+            }
+
+            .detail-loading {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                color: var(--vscode-descriptionForeground);
+                font-size: 12px;
+            }
+
+            .detail-loading::before {
+                content: '';
+                width: 14px;
+                height: 14px;
+                border: 2px solid var(--vscode-descriptionForeground);
+                border-top-color: transparent;
+                border-radius: 50%;
+                animation: spin 0.8s linear infinite;
+            }
+
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+
+            .detail-error {
+                color: var(--vscode-errorForeground);
+                font-size: 12px;
+            }
+
+            .detail-header {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-bottom: 12px;
+                padding-bottom: 8px;
+                border-bottom: 1px solid var(--border-color);
+            }
+
+            .detail-info-item {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                font-size: 11px;
+            }
+
+            .detail-info-label {
+                color: var(--vscode-descriptionForeground);
+            }
+
+            .detail-info-value {
+                color: var(--text-color);
+            }
+
+            .detail-progress {
+                margin-bottom: 12px;
+            }
+
+            .progress-bar {
+                height: 6px;
+                background: var(--vscode-progressBar-background);
+                border-radius: 3px;
+                overflow: hidden;
+                margin-top: 4px;
+            }
+
+            .progress-bar-fill {
+                height: 100%;
+                background: var(--vscode-progressBar-background);
+                background: #22c55e;
+                transition: width 0.3s ease;
+            }
+
+            .progress-text {
+                font-size: 11px;
+                color: var(--vscode-descriptionForeground);
+            }
+
+            .detail-description {
+                font-size: 12px;
+                line-height: 1.6;
+            }
+
+            .detail-description-label {
+                font-size: 10px;
+                text-transform: uppercase;
+                color: var(--vscode-descriptionForeground);
+                margin-bottom: 6px;
+            }
+
+            .detail-description-content {
+                background: var(--vscode-editor-background);
+                padding: 10px;
+                border-radius: 4px;
+                border: 1px solid var(--border-color);
+                max-height: 200px;
+                overflow-y: auto;
+            }
+
+            .detail-description-content:empty::after {
+                content: 'No description';
+                color: var(--vscode-descriptionForeground);
+                font-style: italic;
+            }
+
+            /* Markdown rendered styles */
+            .detail-description-content h1,
+            .detail-description-content h2,
+            .detail-description-content h3 {
+                margin: 12px 0 6px 0;
+                font-weight: 600;
+            }
+
+            .detail-description-content h1 { font-size: 1.3em; }
+            .detail-description-content h2 { font-size: 1.1em; }
+            .detail-description-content h3 { font-size: 1em; }
+
+            .detail-description-content p {
+                margin: 6px 0;
+            }
+
+            .detail-description-content ul,
+            .detail-description-content ol {
+                margin: 6px 0;
+                padding-left: 20px;
+            }
+
+            .detail-description-content li {
+                margin: 2px 0;
+            }
+
+            .detail-description-content code {
+                background: var(--vscode-textCodeBlock-background);
+                padding: 1px 4px;
+                border-radius: 3px;
+                font-family: var(--vscode-editor-font-family);
+                font-size: 0.9em;
+            }
+
+            .detail-description-content pre {
+                background: var(--vscode-textCodeBlock-background);
+                padding: 8px;
+                border-radius: 4px;
+                overflow-x: auto;
+                margin: 8px 0;
+            }
+
+            .detail-description-content pre code {
+                padding: 0;
+                background: none;
+            }
+
+            .detail-description-content blockquote {
+                border-left: 3px solid var(--vscode-textBlockQuote-border);
+                margin: 8px 0;
+                padding-left: 12px;
+                color: var(--vscode-textBlockQuote-foreground);
+            }
+
+            .detail-description-content a {
+                color: var(--vscode-textLink-foreground);
+            }
+
+            .detail-description-content a:hover {
+                text-decoration: underline;
+            }
+
+            .detail-description-content hr {
+                border: none;
+                border-top: 1px solid var(--border-color);
+                margin: 12px 0;
+            }
+
+            .detail-actions {
+                margin-top: 12px;
+                display: flex;
+                gap: 8px;
+            }
+
+            .detail-actions .btn {
+                font-size: 11px;
+                padding: 4px 10px;
+            }
+
+            /* Selected item highlight */
+            .tree-item.detail-open > .tree-item-header {
+                background: var(--vscode-list-activeSelectionBackground);
+            }
+
+            @container (max-width: 500px) {
+                .issue-detail-panel {
+                    padding: 10px;
+                }
+
+                .detail-header {
+                    gap: 6px;
+                }
+
+                .detail-info-item {
+                    font-size: 10px;
+                }
+
+                .detail-description-content {
+                    max-height: 150px;
+                    padding: 8px;
+                }
+            }
         `;
     }
 
@@ -928,6 +1178,192 @@ export class EpicLadderWebviewProvider {
                 document.querySelectorAll('.tree-item').forEach(item => {
                     item.classList.add('collapsed');
                 });
+            }
+
+            // ========================================
+            // Issue Detail Toggle
+            // ========================================
+            let currentDetailIssueId = null;
+            const detailCache = {};
+
+            function toggleDetail(event, issueId) {
+                event.stopPropagation();
+
+                const item = document.querySelector('.tree-item[data-id="' + issueId + '"]');
+                if (!item) return;
+
+                const existingPanel = item.querySelector('.issue-detail-panel');
+
+                // If clicking on the same issue, toggle the panel
+                if (existingPanel) {
+                    if (existingPanel.classList.contains('open')) {
+                        existingPanel.classList.remove('open');
+                        item.classList.remove('detail-open');
+                        currentDetailIssueId = null;
+                    } else {
+                        // Close any other open panels
+                        closeAllDetailPanels();
+                        existingPanel.classList.add('open');
+                        item.classList.add('detail-open');
+                        currentDetailIssueId = issueId;
+                    }
+                    return;
+                }
+
+                // Close any other open panels
+                closeAllDetailPanels();
+
+                // Create new panel
+                const panel = document.createElement('div');
+                panel.className = 'issue-detail-panel open';
+                panel.innerHTML = '<div class="detail-loading">Loading...</div>';
+
+                // Insert after header
+                const header = item.querySelector('.tree-item-header');
+                if (header) {
+                    header.insertAdjacentElement('afterend', panel);
+                }
+
+                item.classList.add('detail-open');
+                currentDetailIssueId = issueId;
+
+                // Check cache first
+                if (detailCache[issueId]) {
+                    renderDetailPanel(panel, detailCache[issueId]);
+                } else {
+                    // Request detail from extension
+                    vscode.postMessage({ command: 'getIssueDetail', issueId: issueId });
+                }
+            }
+
+            function closeAllDetailPanels() {
+                document.querySelectorAll('.issue-detail-panel.open').forEach(panel => {
+                    panel.classList.remove('open');
+                });
+                document.querySelectorAll('.tree-item.detail-open').forEach(item => {
+                    item.classList.remove('detail-open');
+                });
+                currentDetailIssueId = null;
+            }
+
+            // Handle messages from extension
+            window.addEventListener('message', event => {
+                const message = event.data;
+
+                if (message.command === 'issueDetail') {
+                    const panel = document.querySelector('.tree-item[data-id="' + message.issueId + '"] .issue-detail-panel');
+                    if (panel) {
+                        // Cache the result
+                        detailCache[message.issueId] = message.detail;
+                        renderDetailPanel(panel, message.detail);
+                    }
+                } else if (message.command === 'issueDetailError') {
+                    const panel = document.querySelector('.tree-item[data-id="' + message.issueId + '"] .issue-detail-panel');
+                    if (panel) {
+                        panel.innerHTML = '<div class="detail-error">Error: ' + escapeHtml(message.error) + '</div>';
+                    }
+                }
+            });
+
+            function renderDetailPanel(panel, detail) {
+                const issue = detail.issue;
+                const assignee = issue.assigned_to ? issue.assigned_to.name : 'Unassigned';
+                const version = issue.fixed_version ? issue.fixed_version.name : 'None';
+                const doneRatio = issue.done_ratio || 0;
+
+                panel.innerHTML =
+                    '<div class="detail-header">' +
+                        '<div class="detail-info-item">' +
+                            '<span class="detail-info-label">ID:</span>' +
+                            '<span class="detail-info-value">#' + issue.id + '</span>' +
+                        '</div>' +
+                        '<div class="detail-info-item">' +
+                            '<span class="detail-info-label">Status:</span>' +
+                            '<span class="detail-info-value">' + escapeHtml(issue.status.name) + '</span>' +
+                        '</div>' +
+                        '<div class="detail-info-item">' +
+                            '<span class="detail-info-label">Assignee:</span>' +
+                            '<span class="detail-info-value">' + escapeHtml(assignee) + '</span>' +
+                        '</div>' +
+                        '<div class="detail-info-item">' +
+                            '<span class="detail-info-label">Version:</span>' +
+                            '<span class="detail-info-value">' + escapeHtml(version) + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="detail-progress">' +
+                        '<div class="progress-text">Progress: ' + doneRatio + '%</div>' +
+                        '<div class="progress-bar">' +
+                            '<div class="progress-bar-fill" style="width: ' + doneRatio + '%"></div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="detail-description">' +
+                        '<div class="detail-description-label">Description</div>' +
+                        '<div class="detail-description-content">' + renderMarkdown(issue.description || '') + '</div>' +
+                    '</div>' +
+                    '<div class="detail-actions">' +
+                        '<button class="btn" onclick="openInBrowser(\\'' + escapeHtml(issue.url) + '\\')">Open in Browser</button>' +
+                    '</div>';
+            }
+
+            function openInBrowser(url) {
+                vscode.postMessage({ command: 'openInBrowser', url: url });
+            }
+
+            // ========================================
+            // Simple Markdown Renderer
+            // ========================================
+            function renderMarkdown(text) {
+                if (!text) return '';
+
+                let html = escapeHtml(text);
+
+                // Code blocks (must come before inline code)
+                html = html.replace(/\`\`\`([\\s\\S]*?)\`\`\`/g, '<pre><code>$1</code></pre>');
+
+                // Inline code
+                html = html.replace(/\`([^\`]+)\`/g, '<code>$1</code>');
+
+                // Headers
+                html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+                html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+                html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+                // Bold
+                html = html.replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>');
+
+                // Italic
+                html = html.replace(/\\*(.+?)\\*/g, '<em>$1</em>');
+
+                // Links
+                html = html.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, '<a href="$2" target="_blank">$1</a>');
+
+                // Blockquotes
+                html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+
+                // Horizontal rule
+                html = html.replace(/^---$/gm, '<hr>');
+
+                // Unordered lists
+                html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+                html = html.replace(/(<li>.*<\\/li>\\n?)+/g, '<ul>$&</ul>');
+
+                // Line breaks (preserve paragraphs)
+                html = html.replace(/\\n\\n/g, '</p><p>');
+                html = html.replace(/\\n/g, '<br>');
+
+                // Wrap in paragraph if not already wrapped
+                if (!html.startsWith('<')) {
+                    html = '<p>' + html + '</p>';
+                }
+
+                return html;
+            }
+
+            function escapeHtml(text) {
+                if (!text) return '';
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
             }
         `;
     }
