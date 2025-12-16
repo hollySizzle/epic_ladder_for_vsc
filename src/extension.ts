@@ -1,9 +1,11 @@
 import * as vscode from 'vscode';
 import { McpClient, McpError } from './mcpClient';
 import { RedmineIssuesProvider } from './treeView';
+import { EpicLadderWebviewProvider } from './webviewPanel';
 
 let mcpClient: McpClient | undefined;
 let issuesProvider: RedmineIssuesProvider;
+let webviewProvider: EpicLadderWebviewProvider;
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Redmine Epic Ladder extension is now active');
@@ -15,6 +17,10 @@ export function activate(context: vscode.ExtensionContext) {
         showCollapseAll: true
     });
     context.subscriptions.push(treeView);
+
+    // Initialize Webview Provider
+    webviewProvider = new EpicLadderWebviewProvider(context.extensionUri);
+    context.subscriptions.push({ dispose: () => webviewProvider.dispose() });
 
     // Initialize MCP Client
     initializeMcpClient();
@@ -33,7 +39,8 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('redmine.refresh', handleRefresh),
         vscode.commands.registerCommand('redmine.openIssue', handleOpenIssue),
         vscode.commands.registerCommand('redmine.openIssueById', handleOpenIssueById),
-        vscode.commands.registerCommand('redmine.configure', handleConfigure)
+        vscode.commands.registerCommand('redmine.configure', handleConfigure),
+        vscode.commands.registerCommand('redmine.showEpicLadder', handleShowEpicLadder)
     );
 }
 
@@ -74,6 +81,9 @@ function initializeMcpClient(): void {
 
     // Update TreeView provider
     issuesProvider.setMcpClient(mcpClient);
+
+    // Update Webview provider
+    webviewProvider.setMcpClient(mcpClient);
 }
 
 export function getMcpClient(): McpClient | undefined {
@@ -141,6 +151,10 @@ ${issue.description || 'No description'}
 
 async function handleConfigure(): Promise<void> {
     await vscode.commands.executeCommand('workbench.action.openSettings', 'redmine');
+}
+
+async function handleShowEpicLadder(): Promise<void> {
+    await webviewProvider.show();
 }
 
 async function handleOpenIssueById(issueId: string): Promise<void> {
