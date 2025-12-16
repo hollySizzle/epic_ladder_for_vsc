@@ -1,10 +1,20 @@
 import * as vscode from 'vscode';
 import { McpClient, McpError } from './mcpClient';
+import { RedmineIssuesProvider } from './treeView';
 
 let mcpClient: McpClient | undefined;
+let issuesProvider: RedmineIssuesProvider;
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Redmine Epic Ladder extension is now active');
+
+    // Initialize TreeView Provider
+    issuesProvider = new RedmineIssuesProvider();
+    const treeView = vscode.window.createTreeView('redmineIssues', {
+        treeDataProvider: issuesProvider,
+        showCollapseAll: true
+    });
+    context.subscriptions.push(treeView);
 
     // Initialize MCP Client
     initializeMcpClient();
@@ -22,6 +32,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('redmine.refresh', handleRefresh),
         vscode.commands.registerCommand('redmine.openIssue', handleOpenIssue),
+        vscode.commands.registerCommand('redmine.openIssueById', handleOpenIssueById),
         vscode.commands.registerCommand('redmine.configure', handleConfigure)
     );
 }
@@ -37,6 +48,9 @@ function initializeMcpClient(): void {
         mcpClient = undefined;
         console.log('MCP Client not initialized: URL not configured');
     }
+
+    // Update TreeView provider
+    issuesProvider.setMcpClient(mcpClient);
 }
 
 export function getMcpClient(): McpClient | undefined {
@@ -50,12 +64,8 @@ async function handleRefresh(): Promise<void> {
     }
 
     try {
-        const connected = await mcpClient.testConnection();
-        if (connected) {
-            vscode.window.showInformationMessage('Redmine connection successful');
-        } else {
-            vscode.window.showErrorMessage('Failed to connect to Redmine MCP server');
-        }
+        issuesProvider.refresh();
+        vscode.window.showInformationMessage('Redmine issues refreshed');
     } catch (error) {
         handleMcpError(error, 'refresh');
     }
@@ -108,6 +118,42 @@ ${issue.description || 'No description'}
 
 async function handleConfigure(): Promise<void> {
     await vscode.commands.executeCommand('workbench.action.openSettings', 'redmine');
+}
+
+async function handleOpenIssueById(issueId: string): Promise<void> {
+    if (!mcpClient) {
+        vscode.window.showWarningMessage('Redmine URL is not configured.');
+        return;
+    }
+
+    try {
+        const result = await mcpClient.getIssueDetail(issueId);
+        if (result.success) {
+            const issue = result.issue;
+            const content = `# ${issue.subject}
+
+**ID:** ${issue.id}
+**Status:** ${issue.status.name}
+**Tracker:** ${issue.tracker.name}
+**Priority:** ${issue.priority.name}
+**Assigned to:** ${issue.assigned_to?.name ?? 'Unassigned'}
+**Version:** ${issue.fixed_version?.name ?? 'None'}
+
+## Description
+${issue.description || 'No description'}
+
+---
+[Open in Redmine](${issue.url})
+`;
+            const doc = await vscode.workspace.openTextDocument({
+                content,
+                language: 'markdown'
+            });
+            await vscode.window.showTextDocument(doc);
+        }
+    } catch (error) {
+        handleMcpError(error, 'open issue');
+    }
 }
 
 function handleMcpError(error: unknown, operation: string): void {

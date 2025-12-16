@@ -42,6 +42,10 @@
         "title": "Open Issue Details"
       },
       {
+        "command": "redmine.openIssueById",
+        "title": "Open Issue by ID"
+      },
+      {
         "command": "redmine.configure",
         "title": "Configure Redmine Connection"
       }
