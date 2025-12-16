@@ -91,6 +91,24 @@ export class EpicLadderWebviewProvider {
                     }
                 }
                 break;
+            case 'addComment':
+                if (typeof message.issueId === 'string' && typeof message.comment === 'string' && this.mcpClient) {
+                    try {
+                        await this.mcpClient.addIssueComment(message.issueId, message.comment);
+                        this.panel?.webview.postMessage({
+                            command: 'commentSuccess',
+                            issueId: message.issueId
+                        });
+                    } catch (error) {
+                        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                        this.panel?.webview.postMessage({
+                            command: 'commentError',
+                            issueId: message.issueId,
+                            error: errorMessage
+                        });
+                    }
+                }
+                break;
         }
     }
 
@@ -1147,6 +1165,109 @@ export class EpicLadderWebviewProvider {
                 font-style: italic;
             }
 
+            /* ========================================
+               Comment Input Form Styles
+               ======================================== */
+            .comment-input-section {
+                margin-top: 12px;
+                padding-top: 12px;
+                border-top: 1px solid var(--border-color);
+            }
+
+            .comment-input-label {
+                font-size: 10px;
+                text-transform: uppercase;
+                color: var(--vscode-descriptionForeground);
+                margin-bottom: 6px;
+            }
+
+            .comment-input-wrapper {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .comment-textarea {
+                width: 100%;
+                min-height: 80px;
+                padding: 8px;
+                background: var(--input-bg);
+                color: var(--text-color);
+                border: 1px solid var(--input-border);
+                border-radius: 4px;
+                font-family: var(--vscode-font-family);
+                font-size: 12px;
+                resize: vertical;
+            }
+
+            .comment-textarea:focus {
+                outline: 1px solid var(--vscode-focusBorder);
+            }
+
+            .comment-textarea::placeholder {
+                color: var(--vscode-input-placeholderForeground);
+            }
+
+            .comment-input-actions {
+                display: flex;
+                justify-content: flex-end;
+                gap: 8px;
+            }
+
+            .comment-submit-btn {
+                background: var(--button-bg);
+                color: var(--button-fg);
+                border: none;
+                padding: 6px 16px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            .comment-submit-btn:hover {
+                opacity: 0.9;
+            }
+
+            .comment-submit-btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
+            .comment-submit-btn.loading::before {
+                content: '';
+                width: 12px;
+                height: 12px;
+                border: 2px solid var(--button-fg);
+                border-top-color: transparent;
+                border-radius: 50%;
+                animation: spin 0.8s linear infinite;
+            }
+
+            .comment-submit-success {
+                color: #22c55e;
+                font-size: 11px;
+                display: none;
+                align-items: center;
+                gap: 4px;
+            }
+
+            .comment-submit-success.show {
+                display: flex;
+            }
+
+            .comment-submit-error {
+                color: var(--vscode-errorForeground);
+                font-size: 11px;
+                display: none;
+            }
+
+            .comment-submit-error.show {
+                display: block;
+            }
+
             @container (max-width: 500px) {
                 .issue-detail-panel {
                     padding: 10px;
@@ -1179,6 +1300,10 @@ export class EpicLadderWebviewProvider {
 
                 .comment-body {
                     font-size: 11px;
+                }
+
+                .comment-textarea {
+                    min-height: 60px;
                 }
             }
         `;
@@ -1387,6 +1512,10 @@ export class EpicLadderWebviewProvider {
                     if (panel) {
                         panel.innerHTML = '<div class="detail-error">Error: ' + escapeHtml(message.error) + '</div>';
                     }
+                } else if (message.command === 'commentSuccess') {
+                    onCommentSuccess(message.issueId);
+                } else if (message.command === 'commentError') {
+                    onCommentError(message.issueId, message.error);
                 }
             });
 
@@ -1433,6 +1562,17 @@ export class EpicLadderWebviewProvider {
                         '</div>' +
                         '<div class="comments-list">' +
                             renderJournals(journals) +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="comment-input-section">' +
+                        '<div class="comment-input-label">Add Comment</div>' +
+                        '<div class="comment-input-wrapper">' +
+                            '<textarea class="comment-textarea" id="commentInput-' + issue.id + '" placeholder="Enter your comment..."></textarea>' +
+                            '<div class="comment-input-actions">' +
+                                '<span class="comment-submit-success" id="commentSuccess-' + issue.id + '">&#10003; Comment added</span>' +
+                                '<span class="comment-submit-error" id="commentError-' + issue.id + '"></span>' +
+                                '<button class="comment-submit-btn" id="commentBtn-' + issue.id + '" onclick="submitComment(\\'' + issue.id + '\\')">Add</button>' +
+                            '</div>' +
                         '</div>' +
                     '</div>' +
                     '<div class="detail-actions">' +
@@ -1524,6 +1664,87 @@ export class EpicLadderWebviewProvider {
 
             function openInBrowser(url) {
                 vscode.postMessage({ command: 'openInBrowser', url: url });
+            }
+
+            // ========================================
+            // Comment Submit
+            // ========================================
+            function submitComment(issueId) {
+                const textarea = document.getElementById('commentInput-' + issueId);
+                const btn = document.getElementById('commentBtn-' + issueId);
+                const successMsg = document.getElementById('commentSuccess-' + issueId);
+                const errorMsg = document.getElementById('commentError-' + issueId);
+
+                if (!textarea || !btn) return;
+
+                const comment = textarea.value.trim();
+                if (!comment) {
+                    errorMsg.textContent = 'Please enter a comment';
+                    errorMsg.classList.add('show');
+                    setTimeout(() => errorMsg.classList.remove('show'), 3000);
+                    return;
+                }
+
+                // Reset messages
+                successMsg.classList.remove('show');
+                errorMsg.classList.remove('show');
+
+                // Set loading state
+                btn.disabled = true;
+                btn.classList.add('loading');
+                btn.textContent = '';
+
+                vscode.postMessage({
+                    command: 'addComment',
+                    issueId: issueId,
+                    comment: comment
+                });
+            }
+
+            function onCommentSuccess(issueId) {
+                const textarea = document.getElementById('commentInput-' + issueId);
+                const btn = document.getElementById('commentBtn-' + issueId);
+                const successMsg = document.getElementById('commentSuccess-' + issueId);
+                const errorMsg = document.getElementById('commentError-' + issueId);
+
+                if (btn) {
+                    btn.disabled = false;
+                    btn.classList.remove('loading');
+                    btn.textContent = 'Add';
+                }
+
+                if (textarea) {
+                    textarea.value = '';
+                }
+
+                if (successMsg) {
+                    successMsg.classList.add('show');
+                    setTimeout(() => successMsg.classList.remove('show'), 3000);
+                }
+
+                if (errorMsg) {
+                    errorMsg.classList.remove('show');
+                }
+
+                // Clear cache and refresh detail
+                delete detailCache[issueId];
+                vscode.postMessage({ command: 'getIssueDetail', issueId: issueId });
+            }
+
+            function onCommentError(issueId, errorMessage) {
+                const btn = document.getElementById('commentBtn-' + issueId);
+                const errorMsg = document.getElementById('commentError-' + issueId);
+
+                if (btn) {
+                    btn.disabled = false;
+                    btn.classList.remove('loading');
+                    btn.textContent = 'Add';
+                }
+
+                if (errorMsg) {
+                    errorMsg.textContent = errorMessage || 'Failed to add comment';
+                    errorMsg.classList.add('show');
+                }
             }
 
             // ========================================
