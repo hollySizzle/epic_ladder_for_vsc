@@ -217,6 +217,62 @@ export function getScript(): string {
             vscode.postMessage({ command: 'openIssueInBrowser', issueId: issueId });
         }
 
+        // URLをクリップボードにコピー
+        function copyIssueUrl(issueId) {
+            // キャッシュにあればそのURLを使用
+            if (detailCache[issueId] && detailCache[issueId].issue && detailCache[issueId].issue.url) {
+                copyToClipboard(detailCache[issueId].issue.url, issueId);
+                return;
+            }
+            // なければ詳細を取得してからコピー
+            vscode.postMessage({ command: 'copyIssueUrl', issueId: issueId });
+        }
+
+        function copyToClipboard(text, issueId) {
+            navigator.clipboard.writeText(text).then(() => {
+                showCopyFeedback(issueId);
+            }).catch(err => {
+                console.error('Failed to copy URL:', err);
+            });
+        }
+
+        function showCopyFeedback(issueId) {
+            // Find the copy button for this issue and show feedback
+            const treeItem = document.querySelector('.tree-item[data-id="' + issueId + '"]');
+            const copyBtn = treeItem?.querySelector('.copy-url-btn');
+            if (copyBtn) {
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = '✓';
+                copyBtn.classList.add('copied');
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                    copyBtn.classList.remove('copied');
+                }, 1500);
+            }
+        }
+
+        // モーダル用URLコピー
+        function copyModalIssueUrl(url, issueId) {
+            navigator.clipboard.writeText(url).then(() => {
+                showModalCopyFeedback();
+            }).catch(err => {
+                console.error('Failed to copy URL:', err);
+            });
+        }
+
+        function showModalCopyFeedback() {
+            const copyBtn = document.querySelector('.modal-copy-btn');
+            if (copyBtn) {
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = '✓';
+                copyBtn.classList.add('copied');
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                    copyBtn.classList.remove('copied');
+                }, 1500);
+            }
+        }
+
         function applyFilters() {
             const versionId = document.getElementById('versionFilter').value;
             const searchText = document.getElementById('searchInput').value;
@@ -555,6 +611,8 @@ export function getScript(): string {
                 onStatusUpdateSuccess(message.issueId, message.newStatus);
             } else if (message.command === 'statusUpdateError') {
                 onStatusUpdateError(message.issueId, message.error);
+            } else if (message.command === 'copyIssueUrlReady') {
+                copyToClipboard(message.url, message.issueId);
             }
         });
 
@@ -616,7 +674,8 @@ export function getScript(): string {
             // Update modal title
             const titleEl = document.querySelector('.modal-title');
             if (titleEl) {
-                titleEl.innerHTML = '<span class="modal-issue-id">#' + issue.id + '</span> ' +
+                titleEl.innerHTML = '<span class="modal-issue-id" onclick="openInBrowser(\\'' + escapeHtml(issue.url) + '\\')" title="Open in browser">#' + issue.id + '</span>' +
+                    '<span class="modal-copy-btn" onclick="copyModalIssueUrl(\\'' + escapeHtml(issue.url) + '\\', \\'' + issue.id + '\\')" title="Copy URL">Copy</span> ' +
                     '<span class="modal-subject">' + escapeHtml(issue.subject) + '</span>';
             }
 

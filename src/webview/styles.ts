@@ -573,6 +573,30 @@ export function getStyles(): string {
             text-decoration: underline;
         }
 
+        /* Copy URL Button */
+        .copy-url-btn {
+            cursor: pointer;
+            font-size: 10px;
+            padding: 1px 6px;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--vscode-button-secondaryForeground);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+
+        .copy-url-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .copy-url-btn.copied {
+            background: #22c55e;
+            color: #000;
+            border-color: #22c55e;
+        }
+
         .issue-subject {
             flex: 1;
             overflow: hidden;
@@ -742,18 +766,22 @@ export function getStyles(): string {
                 order: 2;
             }
 
-            /* Row 2: ID, Status, Assignee, Version */
+            /* Row 2: ID, Copy button, Status, Assignee, Version */
             .issue-id {
                 order: 3;
                 font-size: 12px;
             }
 
-            .status-badge {
+            .copy-url-btn {
                 order: 4;
             }
 
-            .meta-info {
+            .status-dropdown {
                 order: 5;
+            }
+
+            .meta-info {
+                order: 6;
                 flex-basis: 100%;
                 margin-top: 2px;
             }
@@ -1392,6 +1420,35 @@ export function getStyles(): string {
             font-weight: 700;
             color: var(--vscode-textLink-foreground);
             flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        .modal-issue-id:hover {
+            text-decoration: underline;
+        }
+
+        /* Modal Copy URL Button */
+        .modal-copy-btn {
+            cursor: pointer;
+            font-size: 11px;
+            padding: 2px 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--vscode-button-secondaryForeground);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+
+        .modal-copy-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .modal-copy-btn.copied {
+            background: #22c55e;
+            color: #000;
+            border-color: #22c55e;
         }
 
         .modal-subject {

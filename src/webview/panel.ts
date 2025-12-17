@@ -101,6 +101,22 @@ export class EpicLadderWebviewProvider {
                     }
                 }
                 break;
+            case 'copyIssueUrl':
+                if (typeof message.issueId === 'string' && this.mcpClient) {
+                    try {
+                        const detail = await this.mcpClient.getIssueDetail(message.issueId);
+                        if (detail.issue?.url) {
+                            this.panel?.webview.postMessage({
+                                command: 'copyIssueUrlReady',
+                                issueId: message.issueId,
+                                url: detail.issue.url
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Failed to get issue detail for copy:', error);
+                    }
+                }
+                break;
             case 'filter':
                 await this.updateContent(message as FilterOptions);
                 break;

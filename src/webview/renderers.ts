@@ -34,7 +34,7 @@ export function renderEpics(epics: ProjectStructureEpic[]): string {
                 <span class="type-badge badge-epic">Epic</span>
                 ${renderStatusBadge(epic.id, epic.status)}
                 <span class="issue-id" onclick="event.stopPropagation(); openIssueInBrowser('${epic.id}')">#${epic.id}</span>
-                <span class="copy-url-btn" onclick="event.stopPropagation(); copyIssueUrl('${epic.id}')" title="Copy URL">📋</span>
+                <span class="copy-url-btn" onclick="event.stopPropagation(); copyIssueUrl('${epic.id}')" title="Copy URL">Copy</span>
                 <span class="issue-subject">${escapeHtml(epic.subject)}</span>
             </div>
             <div class="tree-children">
@@ -59,6 +59,7 @@ export function renderFeatures(features: ProjectStructureEpic['features']): stri
                 <span class="type-badge badge-feature">Feature</span>
                 ${renderStatusBadge(feature.id, feature.status)}
                 <span class="issue-id" onclick="event.stopPropagation(); openIssueInBrowser('${feature.id}')">#${feature.id}</span>
+                <span class="copy-url-btn" onclick="event.stopPropagation(); copyIssueUrl('${feature.id}')" title="Copy URL">Copy</span>
                 <span class="issue-subject">${escapeHtml(feature.subject)}</span>
             </div>
             <div class="tree-children">
@@ -97,6 +98,7 @@ export function renderUserStories(stories: ProjectStructureEpic['features'][0]['
                     <span class="type-badge badge-story">Story</span>
                     ${renderStatusBadge(story.id, story.status)}
                     <span class="issue-id" onclick="event.stopPropagation(); openIssueInBrowser('${story.id}')">#${story.id}</span>
+                    <span class="copy-url-btn" onclick="event.stopPropagation(); copyIssueUrl('${story.id}')" title="Copy URL">Copy</span>
                     <span class="issue-subject">${escapeHtml(story.subject)}</span>
                     ${metaInfo}
                 </div>
@@ -152,6 +154,7 @@ export function renderLeafItem(
                 <span class="type-badge ${badgeClass}">${type}</span>
                 ${renderStatusBadge(item.id, item.status)}
                 <span class="issue-id" onclick="event.stopPropagation(); openIssueInBrowser('${item.id}')">#${item.id}</span>
+                <span class="copy-url-btn" onclick="event.stopPropagation(); copyIssueUrl('${item.id}')" title="Copy URL">Copy</span>
                 <span class="issue-subject">${escapeHtml(item.subject)}</span>
                 ${metaInfo}
             </div>
