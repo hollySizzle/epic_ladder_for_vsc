@@ -122,6 +122,32 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
+## Development
+
+### Publishing to Marketplace
+
+This extension uses GitHub Actions for automated publishing. When a version tag is pushed, the extension is automatically published to the VS Code Marketplace.
+
+#### Setup
+
+1. Create a Personal Access Token (PAT) in [Azure DevOps](https://dev.azure.com/)
+   - Organization: `All accessible organizations`
+   - Scope: `Marketplace > Manage`
+2. Add the PAT as a secret named `VSCE_PAT` in the GitHub repository settings
+
+#### Publishing a New Version
+
+1. Update `version` in `package.json`
+2. Commit the changes
+3. Create and push a version tag:
+
+```bash
+git tag v0.1.3
+git push origin v0.1.3
+```
+
+The GitHub Action will automatically build and publish the extension.
+
 ## Support
 
 - [GitHub Issues](https://github.com/hollySizzle/epic_ladder_for_vsc/issues)
