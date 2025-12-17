@@ -6,3 +6,5 @@ dist/
 .vscode-test/
 .env
 *.vsix
+tmp/**
+!.gitkeep

@@ -57,7 +57,8 @@ export class EpicLadderWebviewProvider {
     private async handleMessage(message: { command: string; [key: string]: unknown }): Promise<void> {
         switch (message.command) {
             case 'refresh':
-                await this.updateContent();
+                // フィルタ状態を保持してリフレッシュ
+                await this.updateContent(message as FilterOptions);
                 break;
             case 'openIssue':
                 if (typeof message.issueId === 'string') {
@@ -174,7 +175,11 @@ export class EpicLadderWebviewProvider {
         const nonce = this.getNonce();
         const assignees = this.extractAssignees(structure.structure);
         const trackerTypes = ['Epic', 'Feature', 'Story', 'Task', 'Bug', 'Test'];
-        const activeFilterCount = this.countActiveFilters(filterOptions);
+        const statusTypes = ['未着手', '着手中', 'クローズ'];
+        // デフォルト: 未着手と着手中を選択（Open Only相当）
+        const defaultStatuses = ['未着手', '着手中'];
+        const selectedStatuses = filterOptions?.selectedStatuses ?? defaultStatuses;
+        const activeFilterCount = this.countActiveFilters(filterOptions, defaultStatuses);
 
         return `<!DOCTYPE html>
 <html lang="ja">
@@ -228,12 +233,24 @@ export class EpicLadderWebviewProvider {
                             `).join('')}
                         </select>
                     </div>
-                    <div class="filter-group">
-                        <label for="statusFilter">Status</label>
-                        <select id="statusFilter" onchange="applyFilters()">
-                            <option value="open" ${!filterOptions?.includeClosed ? 'selected' : ''}>Open Only</option>
-                            <option value="all" ${filterOptions?.includeClosed ? 'selected' : ''}>All</option>
-                        </select>
+                    <div class="filter-group filter-group-status">
+                        <label>Status</label>
+                        <div class="multiselect-dropdown" id="statusDropdown">
+                            <button type="button" class="multiselect-toggle" onclick="toggleStatusFilterDropdown()">
+                                <span class="multiselect-text">${selectedStatuses.length > 0 ? selectedStatuses.join(', ') : 'Select...'}</span>
+                                <span class="multiselect-arrow">▼</span>
+                            </button>
+                            <div class="multiselect-menu" id="statusFilterMenu">
+                                ${statusTypes.map(status => `
+                                    <label class="multiselect-option">
+                                        <input type="checkbox" name="statusFilter" value="${this.escapeHtml(status)}"
+                                            ${selectedStatuses.includes(status) ? 'checked' : ''}
+                                            onchange="onStatusFilterChange()">
+                                        <span>${this.escapeHtml(status)}</span>
+                                    </label>
+                                `).join('')}
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="filter-row">
@@ -259,6 +276,14 @@ export class EpicLadderWebviewProvider {
                             `).join('')}
                         </select>
                     </div>
+                    <div class="filter-group filter-checkbox">
+                        <label class="inline-checkbox">
+                            <input type="checkbox" id="hideEmptyHierarchy"
+                                ${filterOptions?.hideEmptyHierarchy ? 'checked' : ''}
+                                onchange="applyClientFilters()">
+                            <span>空の階層を非表示</span>
+                        </label>
+                    </div>
                     <div class="filter-group filter-actions">
                         <label>&nbsp;</label>
                         <button class="btn btn-clear" onclick="clearAllFilters()" title="Clear all filters">
@@ -269,7 +294,7 @@ export class EpicLadderWebviewProvider {
                 ${activeFilterCount > 0 ? `
                     <div class="active-filters">
                         <span class="active-filters-label">Active:</span>
-                        ${this.renderActiveFilterBadges(filterOptions, versions, assignees)}
+                        ${this.renderActiveFilterBadges(filterOptions, versions, assignees, defaultStatuses)}
                     </div>
                 ` : ''}
             </div>
@@ -684,7 +709,7 @@ export class EpicLadderWebviewProvider {
                 opacity: 0.8;
             }
 
-            .filter-group input,
+            .filter-group input[type="text"],
             .filter-group select {
                 background: var(--input-bg);
                 color: var(--text-color);
@@ -695,9 +720,130 @@ export class EpicLadderWebviewProvider {
                 width: 100%;
             }
 
-            .filter-group input:focus,
+            .filter-group input[type="text"]:focus,
             .filter-group select:focus {
                 outline: 1px solid var(--vscode-focusBorder);
+            }
+
+            /* Multiselect Dropdown */
+            .filter-group-status {
+                min-width: 140px;
+            }
+
+            .multiselect-dropdown {
+                position: relative;
+            }
+
+            .multiselect-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                width: 100%;
+                background: var(--input-bg);
+                color: var(--text-color);
+                border: 1px solid var(--input-border);
+                padding: 6px 8px;
+                border-radius: 4px;
+                font-size: 13px;
+                cursor: pointer;
+                text-align: left;
+            }
+
+            .multiselect-toggle:hover {
+                background: var(--hover-bg);
+            }
+
+            .multiselect-toggle:focus {
+                outline: 1px solid var(--vscode-focusBorder);
+            }
+
+            .multiselect-text {
+                flex: 1;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .multiselect-arrow {
+                font-size: 8px;
+                margin-left: 6px;
+                opacity: 0.7;
+            }
+
+            .multiselect-menu {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                z-index: 1000;
+                background: var(--vscode-dropdown-background);
+                border: 1px solid var(--vscode-dropdown-border);
+                border-radius: 4px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+                margin-top: 2px;
+                max-height: 200px;
+                overflow-y: auto;
+            }
+
+            .multiselect-menu.open {
+                display: block;
+            }
+
+            .multiselect-option {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 10px;
+                cursor: pointer;
+                font-size: 12px;
+                transition: background 0.1s;
+            }
+
+            .multiselect-option:hover {
+                background: var(--vscode-list-hoverBackground);
+            }
+
+            .multiselect-option input[type="checkbox"] {
+                width: 14px;
+                height: 14px;
+                margin: 0;
+                cursor: pointer;
+                accent-color: var(--vscode-button-background);
+            }
+
+            .multiselect-option span {
+                flex: 1;
+            }
+
+            /* Inline Checkbox (空の階層を非表示) */
+            .filter-checkbox {
+                flex: 0 0 auto;
+                min-width: auto;
+                display: flex;
+                align-items: flex-end;
+            }
+
+            .inline-checkbox {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                cursor: pointer;
+                font-size: 12px;
+                padding: 6px 0;
+                white-space: nowrap;
+            }
+
+            .inline-checkbox input[type="checkbox"] {
+                width: 14px;
+                height: 14px;
+                margin: 0;
+                cursor: pointer;
+                accent-color: var(--vscode-button-background);
+            }
+
+            .inline-checkbox span {
+                opacity: 0.9;
             }
 
             .summary {
@@ -1036,6 +1182,17 @@ export class EpicLadderWebviewProvider {
                 .active-filter-badge {
                     font-size: 10px;
                     padding: 2px 6px;
+                }
+
+                /* Multiselect dropdown for narrow screens */
+                .multiselect-toggle {
+                    padding: 5px 6px;
+                    font-size: 12px;
+                }
+
+                .multiselect-option {
+                    padding: 6px 8px;
+                    font-size: 11px;
                 }
 
                 /* Summary wraps into 2 rows */
@@ -1622,7 +1779,31 @@ export class EpicLadderWebviewProvider {
             let filtersCollapsed = true;
 
             function refresh() {
-                vscode.postMessage({ command: 'refresh' });
+                // フィルタ状態を保持してリフレッシュ
+                const currentFilters = getCurrentFilterState();
+                vscode.postMessage({ command: 'refresh', ...currentFilters });
+            }
+
+            function getCurrentFilterState() {
+                const versionFilter = document.getElementById('versionFilter');
+                const assigneeFilter = document.getElementById('assigneeFilter');
+                const trackerFilter = document.getElementById('trackerFilter');
+                const searchInput = document.getElementById('searchInput');
+                const hideEmptyCheckbox = document.getElementById('hideEmptyHierarchy');
+                const statusCheckboxes = document.querySelectorAll('input[name="statusFilter"]:checked');
+
+                const selectedStatuses = Array.from(statusCheckboxes).map(cb => cb.value);
+                const includesClosed = selectedStatuses.includes('クローズ');
+
+                return {
+                    versionId: versionFilter?.value || undefined,
+                    assigneeId: assigneeFilter?.value || undefined,
+                    trackerType: trackerFilter?.value || undefined,
+                    searchText: searchInput?.value || undefined,
+                    selectedStatuses: selectedStatuses,
+                    includeClosed: includesClosed,
+                    hideEmptyHierarchy: hideEmptyCheckbox?.checked || false
+                };
             }
 
             function toggleFilters() {
@@ -1648,6 +1829,47 @@ export class EpicLadderWebviewProvider {
 
             // Run on load
             initFilters();
+
+            // ========================================
+            // Status Filter Multiselect Dropdown
+            // ========================================
+            let statusFilterMenuOpen = false;
+
+            function toggleStatusFilterDropdown() {
+                const menu = document.getElementById('statusFilterMenu');
+                if (!menu) return;
+
+                statusFilterMenuOpen = !statusFilterMenuOpen;
+                menu.classList.toggle('open', statusFilterMenuOpen);
+            }
+
+            function closeStatusFilterDropdown() {
+                const menu = document.getElementById('statusFilterMenu');
+                if (menu) {
+                    menu.classList.remove('open');
+                    statusFilterMenuOpen = false;
+                }
+            }
+
+            function onStatusFilterChange() {
+                // Update dropdown button text
+                const checkboxes = document.querySelectorAll('input[name="statusFilter"]:checked');
+                const selectedValues = Array.from(checkboxes).map(cb => cb.value);
+                const textEl = document.querySelector('.multiselect-text');
+                if (textEl) {
+                    textEl.textContent = selectedValues.length > 0 ? selectedValues.join(', ') : 'Select...';
+                }
+                // Apply filter
+                applyClientFilters();
+            }
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(event) {
+                const dropdown = document.getElementById('statusDropdown');
+                if (dropdown && !dropdown.contains(event.target)) {
+                    closeStatusFilterDropdown();
+                }
+            });
 
             // ========================================
             // Search Shortcuts (/, Cmd+F, Ctrl+F)
@@ -1761,14 +1983,19 @@ export class EpicLadderWebviewProvider {
 
             function applyFilters() {
                 const versionId = document.getElementById('versionFilter').value;
-                const statusFilter = document.getElementById('statusFilter').value;
                 const searchText = document.getElementById('searchInput').value;
+
+                // ステータスチェックボックスの値を取得
+                const statusCheckboxes = document.querySelectorAll('input[name="statusFilter"]:checked');
+                const selectedStatuses = Array.from(statusCheckboxes).map(cb => cb.value);
+                const includesClosed = selectedStatuses.includes('クローズ');
 
                 vscode.postMessage({
                     command: 'filter',
                     versionId: versionId || undefined,
-                    includeClosed: statusFilter === 'all',
-                    searchText: searchText
+                    includeClosed: includesClosed,
+                    searchText: searchText,
+                    selectedStatuses: selectedStatuses
                 });
             }
 
@@ -1776,8 +2003,14 @@ export class EpicLadderWebviewProvider {
                 const searchText = document.getElementById('searchInput').value;
                 const assigneeId = document.getElementById('assigneeFilter').value;
                 const trackerType = document.getElementById('trackerFilter').value;
+                const hideEmptyCheckbox = document.getElementById('hideEmptyHierarchy');
+                const hideEmptyHierarchy = hideEmptyCheckbox?.checked || false;
 
-                filterByMultipleCriteria(searchText, assigneeId, trackerType);
+                // ステータスチェックボックスの値を取得
+                const statusCheckboxes = document.querySelectorAll('input[name="statusFilter"]:checked');
+                const selectedStatuses = Array.from(statusCheckboxes).map(cb => cb.value);
+
+                filterByMultipleCriteria(searchText, assigneeId, trackerType, selectedStatuses, hideEmptyHierarchy);
             }
 
             function debounceSearch(value) {
@@ -1787,77 +2020,153 @@ export class EpicLadderWebviewProvider {
                 }, 300);
             }
 
-            function filterByMultipleCriteria(searchText, assigneeId, trackerType) {
+            function filterByMultipleCriteria(searchText, assigneeId, trackerType, selectedStatuses, hideEmptyHierarchy) {
                 const items = document.querySelectorAll('.tree-item');
                 const searchLower = (searchText || '').toLowerCase();
+                const defaultStatuses = ['未着手', '着手中'];
+                const hasStatusFilter = selectedStatuses &&
+                    (selectedStatuses.length !== defaultStatuses.length ||
+                     !defaultStatuses.every(s => selectedStatuses.includes(s)));
 
                 // Reset all items first
                 items.forEach(item => {
                     item.classList.remove('search-hidden', 'search-match');
                 });
 
-                // If no filters are active, we're done
-                if (!searchText && !assigneeId && !trackerType) {
-                    return;
+                // Apply individual filters
+                const hasFilters = searchText || assigneeId || trackerType || hasStatusFilter;
+
+                if (hasFilters) {
+                    items.forEach(item => {
+                        let matches = true;
+
+                        // Check search text
+                        if (searchText) {
+                            const subject = item.querySelector('.issue-subject');
+                            const id = item.querySelector('.issue-id');
+                            const text = (subject?.textContent || '') + ' ' + (id?.textContent || '');
+                            if (!text.toLowerCase().includes(searchLower)) {
+                                matches = false;
+                            }
+                        }
+
+                        // Check assignee
+                        if (matches && assigneeId) {
+                            const assigneeElem = item.querySelector('.assignee');
+                            const itemAssignee = assigneeElem?.textContent || '';
+                            // Get selected assignee name from dropdown
+                            const assigneeSelect = document.getElementById('assigneeFilter');
+                            const selectedAssigneeName = assigneeSelect.options[assigneeSelect.selectedIndex]?.text || '';
+                            if (!itemAssignee.includes(selectedAssigneeName.replace('@', ''))) {
+                                matches = false;
+                            }
+                        }
+
+                        // Check tracker type
+                        if (matches && trackerType) {
+                            const typeBadge = item.querySelector('.type-badge');
+                            const itemType = typeBadge?.textContent?.trim() || '';
+                            if (itemType.toLowerCase() !== trackerType.toLowerCase()) {
+                                matches = false;
+                            }
+                        }
+
+                        // Check status (マルチセレクト対応)
+                        if (matches && selectedStatuses && selectedStatuses.length > 0) {
+                            const statusBadge = item.querySelector('.status-badge');
+                            const itemStatus = statusBadge?.textContent?.replace('▼', '').trim() || '';
+                            if (!selectedStatuses.some(status => itemStatus.includes(status))) {
+                                matches = false;
+                            }
+                        }
+
+                        if (matches) {
+                            item.classList.remove('search-hidden');
+                            if (searchText) {
+                                item.classList.add('search-match');
+                            }
+                            // Expand parent items
+                            let parent = item.parentElement?.closest('.tree-item');
+                            while (parent) {
+                                parent.classList.remove('collapsed', 'search-hidden');
+                                parent = parent.parentElement?.closest('.tree-item');
+                            }
+                        } else {
+                            item.classList.add('search-hidden');
+                            item.classList.remove('search-match');
+                        }
+                    });
+
+                    // Show parent items that have visible children
+                    items.forEach(item => {
+                        if (item.classList.contains('search-hidden')) {
+                            const hasVisibleChild = item.querySelector('.tree-item:not(.search-hidden)');
+                            if (hasVisibleChild) {
+                                item.classList.remove('search-hidden');
+                            }
+                        }
+                    });
                 }
 
-                items.forEach(item => {
-                    let matches = true;
+                // 空の階層を非表示にする処理
+                if (hideEmptyHierarchy) {
+                    hideEmptyHierarchyItems();
+                }
+            }
 
-                    // Check search text
-                    if (searchText) {
-                        const subject = item.querySelector('.issue-subject');
-                        const id = item.querySelector('.issue-id');
-                        const text = (subject?.textContent || '') + ' ' + (id?.textContent || '');
-                        if (!text.toLowerCase().includes(searchLower)) {
-                            matches = false;
-                        }
+            // フィルタ後にUserStoryを持たないEpic/Featureを非表示にする
+            function hideEmptyHierarchyItems() {
+                const items = document.querySelectorAll('.tree-item');
+
+                // ボトムアップで処理（深い階層から順に）
+                // まず全てのアイテムを配列に変換し、深さでソート
+                const itemsArray = Array.from(items);
+
+                // 各アイテムの深さを計算
+                function getDepth(item) {
+                    let depth = 0;
+                    let parent = item.parentElement?.closest('.tree-item');
+                    while (parent) {
+                        depth++;
+                        parent = parent.parentElement?.closest('.tree-item');
                     }
+                    return depth;
+                }
 
-                    // Check assignee
-                    if (matches && assigneeId) {
-                        const assigneeElem = item.querySelector('.assignee');
-                        const itemAssignee = assigneeElem?.textContent || '';
-                        // Get selected assignee name from dropdown
-                        const assigneeSelect = document.getElementById('assigneeFilter');
-                        const selectedAssigneeName = assigneeSelect.options[assigneeSelect.selectedIndex]?.text || '';
-                        if (!itemAssignee.includes(selectedAssigneeName.replace('@', ''))) {
-                            matches = false;
-                        }
-                    }
+                // 深さでソート（深い順）
+                itemsArray.sort((a, b) => getDepth(b) - getDepth(a));
 
-                    // Check tracker type
-                    if (matches && trackerType) {
-                        const typeBadge = item.querySelector('.type-badge');
-                        const itemType = typeBadge?.textContent?.trim() || '';
-                        if (itemType.toLowerCase() !== trackerType.toLowerCase()) {
-                            matches = false;
-                        }
-                    }
+                // 各アイテムについて、表示中のUserStoryがあるかチェック
+                itemsArray.forEach(item => {
+                    if (item.classList.contains('search-hidden')) return;
 
-                    if (matches) {
-                        item.classList.remove('search-hidden');
-                        if (searchText) {
-                            item.classList.add('search-match');
-                        }
-                        // Expand parent items
-                        let parent = item.parentElement?.closest('.tree-item');
-                        while (parent) {
-                            parent.classList.remove('collapsed', 'search-hidden');
-                            parent = parent.parentElement?.closest('.tree-item');
-                        }
-                    } else {
-                        item.classList.add('search-hidden');
-                        item.classList.remove('search-match');
-                    }
-                });
+                    const typeBadge = item.querySelector(':scope > .tree-item-header .type-badge');
+                    const itemType = typeBadge?.textContent?.trim().toLowerCase() || '';
 
-                // Show parent items that have visible children
-                items.forEach(item => {
-                    if (item.classList.contains('search-hidden')) {
-                        const hasVisibleChild = item.querySelector('.tree-item:not(.search-hidden)');
-                        if (hasVisibleChild) {
-                            item.classList.remove('search-hidden');
+                    // Epic または Feature の場合のみチェック
+                    if (itemType === 'epic' || itemType === 'feature') {
+                        // 直下または子孫に表示中のStory/Task/Bug/Testがあるか
+                        const hasVisibleUserStoryOrDescendant = item.querySelector(
+                            '.tree-item:not(.search-hidden) .type-badge'
+                        );
+
+                        if (!hasVisibleUserStoryOrDescendant) {
+                            // 表示中の子要素がない場合は非表示
+                            item.classList.add('search-hidden');
+                        } else {
+                            // 子要素がStory以下のタイプを含むかチェック
+                            const childItems = item.querySelectorAll('.tree-item:not(.search-hidden)');
+                            let hasStoryOrLeaf = false;
+                            childItems.forEach(child => {
+                                const childTypeBadge = child.querySelector(':scope > .tree-item-header .type-badge');
+                                const childType = childTypeBadge?.textContent?.trim().toLowerCase() || '';
+                                if (childType === 'story' || childType === 'task' || childType === 'bug' || childType === 'test') {
+                                    hasStoryOrLeaf = true;
+                                }
+                            });
+                            if (!hasStoryOrLeaf) {
+                                item.classList.add('search-hidden');
+                            }
                         }
                     }
                 });
@@ -1866,9 +2175,15 @@ export class EpicLadderWebviewProvider {
             function clearAllFilters() {
                 document.getElementById('searchInput').value = '';
                 document.getElementById('versionFilter').value = '';
-                document.getElementById('statusFilter').value = 'open';
                 document.getElementById('assigneeFilter').value = '';
                 document.getElementById('trackerFilter').value = '';
+
+                // ステータスチェックボックスをデフォルト状態にリセット（未着手と着手中をチェック）
+                resetStatusFilterToDefault();
+
+                // 空の階層を非表示チェックボックスをリセット（デフォルトOFF）
+                const hideEmptyCheckbox = document.getElementById('hideEmptyHierarchy');
+                if (hideEmptyCheckbox) hideEmptyCheckbox.checked = false;
 
                 // Reset all items
                 const items = document.querySelectorAll('.tree-item');
@@ -1878,6 +2193,18 @@ export class EpicLadderWebviewProvider {
 
                 // Reapply server-side filters
                 applyFilters();
+            }
+
+            function resetStatusFilterToDefault() {
+                const statusCheckboxes = document.querySelectorAll('input[name="statusFilter"]');
+                statusCheckboxes.forEach(cb => {
+                    cb.checked = (cb.value === '未着手' || cb.value === '着手中');
+                });
+                // Update dropdown text
+                const textEl = document.querySelector('.multiselect-text');
+                if (textEl) {
+                    textEl.textContent = '未着手, 着手中';
+                }
             }
 
             function clearFilter(filterType) {
@@ -1891,8 +2218,8 @@ export class EpicLadderWebviewProvider {
                         applyFilters();
                         break;
                     case 'status':
-                        document.getElementById('statusFilter').value = 'open';
-                        applyFilters();
+                        resetStatusFilterToDefault();
+                        applyClientFilters();
                         break;
                     case 'assignee':
                         document.getElementById('assigneeFilter').value = '';
@@ -1900,6 +2227,11 @@ export class EpicLadderWebviewProvider {
                         break;
                     case 'tracker':
                         document.getElementById('trackerFilter').value = '';
+                        applyClientFilters();
+                        break;
+                    case 'hideEmpty':
+                        const hideEmptyCheckbox = document.getElementById('hideEmptyHierarchy');
+                        if (hideEmptyCheckbox) hideEmptyCheckbox.checked = false;
                         applyClientFilters();
                         break;
                 }
@@ -2491,21 +2823,28 @@ export class EpicLadderWebviewProvider {
             .sort((a, b) => a.name.localeCompare(b.name));
     }
 
-    private countActiveFilters(filterOptions?: FilterOptions): number {
+    private countActiveFilters(filterOptions?: FilterOptions, defaultStatuses?: string[]): number {
         if (!filterOptions) return 0;
         let count = 0;
         if (filterOptions.searchText) count++;
         if (filterOptions.versionId) count++;
-        if (filterOptions.includeClosed) count++;
+        // ステータスフィルタ: デフォルトと異なる場合にカウント
+        if (filterOptions.selectedStatuses && defaultStatuses) {
+            const isDefault = filterOptions.selectedStatuses.length === defaultStatuses.length &&
+                defaultStatuses.every(s => filterOptions.selectedStatuses!.includes(s));
+            if (!isDefault) count++;
+        }
         if (filterOptions.assigneeId) count++;
         if (filterOptions.trackerType) count++;
+        if (filterOptions.hideEmptyHierarchy) count++;
         return count;
     }
 
     private renderActiveFilterBadges(
         filterOptions: FilterOptions | undefined,
         versions: RedmineVersion[],
-        assignees: AssigneeInfo[]
+        assignees: AssigneeInfo[],
+        defaultStatuses?: string[]
     ): string {
         if (!filterOptions) return '';
         const badges: string[] = [];
@@ -2523,11 +2862,17 @@ export class EpicLadderWebviewProvider {
                 <span class="remove-filter" onclick="clearFilter('version')">×</span>
             </span>`);
         }
-        if (filterOptions.includeClosed) {
-            badges.push(`<span class="active-filter-badge" data-filter="status">
-                Including Closed
-                <span class="remove-filter" onclick="clearFilter('status')">×</span>
-            </span>`);
+        // ステータスフィルタ: デフォルトと異なる場合に表示
+        if (filterOptions.selectedStatuses && defaultStatuses) {
+            const isDefault = filterOptions.selectedStatuses.length === defaultStatuses.length &&
+                defaultStatuses.every(s => filterOptions.selectedStatuses!.includes(s));
+            if (!isDefault) {
+                const statusText = filterOptions.selectedStatuses.join(', ');
+                badges.push(`<span class="active-filter-badge" data-filter="status">
+                    Status: ${this.escapeHtml(statusText)}
+                    <span class="remove-filter" onclick="clearFilter('status')">×</span>
+                </span>`);
+            }
         }
         if (filterOptions.assigneeId) {
             const assignee = assignees.find(a => a.id === filterOptions.assigneeId);
@@ -2540,6 +2885,12 @@ export class EpicLadderWebviewProvider {
             badges.push(`<span class="active-filter-badge" data-filter="tracker">
                 Type: ${this.escapeHtml(filterOptions.trackerType)}
                 <span class="remove-filter" onclick="clearFilter('tracker')">×</span>
+            </span>`);
+        }
+        if (filterOptions.hideEmptyHierarchy) {
+            badges.push(`<span class="active-filter-badge" data-filter="hideEmpty">
+                空の階層を非表示
+                <span class="remove-filter" onclick="clearFilter('hideEmpty')">×</span>
             </span>`);
         }
 
@@ -2567,6 +2918,8 @@ interface FilterOptions {
     searchText?: string;
     assigneeId?: string;
     trackerType?: string;
+    selectedStatuses?: string[];  // マルチセレクト対応: 選択されたステータス名の配列
+    hideEmptyHierarchy?: boolean;  // フィルタ後にUSがないEpic/Featureを非表示
 }
 
 interface AssigneeInfo {
