@@ -1,14 +1,33 @@
 {
   "name": "redmine-epic-ladder",
   "displayName": "Redmine Epic Ladder",
-  "description": "VS Code extension for Redmine ticket management",
-  "version": "0.0.1",
-  "publisher": "your-publisher-name",
+  "description": "VS Code extension for Redmine ticket management with hierarchical Epic/Feature/UserStory view",
+  "version": "0.1.0",
+  "publisher": "hollySizzle",
+  "license": "MIT",
+  "icon": "resources/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hollySizzle/epic_ladder_for_vsc.git"
+  },
+  "homepage": "https://github.com/hollySizzle/epic_ladder_for_vsc#readme",
+  "bugs": {
+    "url": "https://github.com/hollySizzle/epic_ladder_for_vsc/issues"
+  },
+  "keywords": [
+    "redmine",
+    "epic",
+    "ticket",
+    "issue",
+    "project management",
+    "agile"
+  ],
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Visualization"
   ],
   "activationEvents": [],
   "main": "./out/extension.js",

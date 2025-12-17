@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4a90d9"/>
+      <stop offset="100%" style="stop-color:#2563eb"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="128" height="128" rx="16" fill="url(#bg)"/>
+  <!-- Ladder/Hierarchy icon -->
+  <g fill="white">
+    <!-- Top level (Epic) -->
+    <rect x="20" y="24" width="88" height="16" rx="4"/>
+    <!-- Second level (Feature) -->
+    <rect x="32" y="48" width="76" height="14" rx="3"/>
+    <!-- Third level (UserStory) -->
+    <rect x="44" y="70" width="64" height="12" rx="3"/>
+    <!-- Fourth level (Task) -->
+    <rect x="56" y="90" width="52" height="10" rx="2"/>
+    <!-- Connecting lines -->
+    <rect x="26" y="40" width="3" height="60" rx="1"/>
+    <rect x="38" y="62" width="3" height="38" rx="1"/>
+    <rect x="50" y="82" width="3" height="18" rx="1"/>
+  </g>
+</svg>
