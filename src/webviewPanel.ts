@@ -1,11 +1,47 @@
 import * as vscode from 'vscode';
+import { marked } from 'marked';
 import { McpClient } from './mcpClient';
 import {
     GetProjectStructureResponse,
     ProjectStructureEpic,
-    RedmineVersion,
-    RedmineIssue
+    RedmineVersion
 } from './types';
+
+// Configure marked for GFM (GitHub Flavored Markdown)
+marked.setOptions({
+    gfm: true,
+    breaks: true
+});
+
+/**
+ * Sanitize HTML to prevent XSS attacks
+ * Removes dangerous tags and attributes while preserving safe content
+ */
+function sanitizeHtml(html: string): string {
+    // Remove script tags and their content
+    html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+    // Remove on* event handlers
+    html = html.replace(/\s+on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, '');
+    // Remove javascript: URLs
+    html = html.replace(/javascript:/gi, '');
+    // Remove iframe, object, embed, form tags
+    html = html.replace(/<(iframe|object|embed|form)\b[^>]*>[\s\S]*?<\/\1>/gi, '');
+    html = html.replace(/<(iframe|object|embed|form)\b[^>]*\/?>/gi, '');
+    // Remove style tags with potentially dangerous content
+    html = html.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+    // Remove data: URLs (except for safe image types)
+    html = html.replace(/data:(?!image\/(png|jpeg|gif|webp))[^"'\s]*/gi, '');
+    return html;
+}
+
+/**
+ * Render Markdown to sanitized HTML
+ */
+function renderMarkdownToHtml(text: string): string {
+    if (!text) return '';
+    const html = marked.parse(text) as string;
+    return sanitizeHtml(html);
+}
 
 export class EpicLadderWebviewProvider {
     public static readonly viewType = 'epicLadder.webview';
@@ -77,10 +113,22 @@ export class EpicLadderWebviewProvider {
                 if (typeof message.issueId === 'string' && this.mcpClient) {
                     try {
                         const detail = await this.mcpClient.getIssueDetail(message.issueId);
+                        // Convert Markdown to HTML for description and journal notes
+                        const processedDetail = {
+                            ...detail,
+                            issue: {
+                                ...detail.issue,
+                                descriptionHtml: renderMarkdownToHtml(detail.issue.description || '')
+                            },
+                            journals: detail.journals.map(journal => ({
+                                ...journal,
+                                notesHtml: renderMarkdownToHtml(journal.notes || '')
+                            }))
+                        };
                         this.panel?.webview.postMessage({
                             command: 'issueDetail',
                             issueId: message.issueId,
-                            detail: detail
+                            detail: processedDetail
                         });
                     } catch (error) {
                         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -1589,6 +1637,63 @@ export class EpicLadderWebviewProvider {
                 display: none;
             }
 
+            .comment-body ul,
+            .comment-body ol {
+                margin: 6px 0;
+                padding-left: 24px;
+            }
+
+            .comment-body li {
+                margin: 2px 0;
+            }
+
+            .comment-body p {
+                margin: 6px 0;
+            }
+
+            .comment-body code {
+                background: var(--vscode-textCodeBlock-background);
+                padding: 1px 4px;
+                border-radius: 3px;
+                font-family: var(--vscode-editor-font-family);
+                font-size: 0.9em;
+            }
+
+            .comment-body pre {
+                background: var(--vscode-textCodeBlock-background);
+                padding: 8px;
+                border-radius: 4px;
+                overflow-x: auto;
+                margin: 8px 0;
+            }
+
+            .comment-body pre code {
+                padding: 0;
+                background: none;
+            }
+
+            .comment-body blockquote {
+                border-left: 3px solid var(--vscode-textBlockQuote-border);
+                margin: 8px 0;
+                padding-left: 12px;
+                color: var(--vscode-textBlockQuote-foreground);
+            }
+
+            .comment-body a {
+                color: var(--vscode-textLink-foreground);
+            }
+
+            .comment-body h1,
+            .comment-body h2,
+            .comment-body h3 {
+                margin: 12px 0 6px 0;
+                font-weight: 600;
+            }
+
+            .comment-body h1 { font-size: 1.2em; }
+            .comment-body h2 { font-size: 1.1em; }
+            .comment-body h3 { font-size: 1em; }
+
             /* Change details (status changes, etc.) */
             .comment-changes {
                 margin-top: 6px;
@@ -2430,7 +2535,7 @@ export class EpicLadderWebviewProvider {
                     '</div>' +
                     '<div class="detail-description">' +
                         '<div class="detail-description-label">Description</div>' +
-                        '<div class="detail-description-content">' + renderMarkdown(issue.description || '') + '</div>' +
+                        '<div class="detail-description-content">' + (issue.descriptionHtml || renderMarkdown(issue.description || '')) + '</div>' +
                     '</div>' +
                     '<div class="detail-comments">' +
                         '<div class="detail-comments-label">' +
@@ -2481,7 +2586,7 @@ export class EpicLadderWebviewProvider {
                     html += '</div>';
 
                     if (hasNotes) {
-                        html += '<div class="comment-body">' + renderMarkdown(journal.notes) + '</div>';
+                        html += '<div class="comment-body">' + (journal.notesHtml || renderMarkdown(journal.notes)) + '</div>';
                     }
 
                     if (hasChanges) {
