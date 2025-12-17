@@ -207,6 +207,7 @@ export class EpicLadderWebviewProvider {
     ): string {
         const nonce = getNonce();
         const assignees = extractAssignees(structure.structure);
+        const redmineUrl = this.mcpClient?.getRedmineUrl() ?? '';
         const trackerTypes = ['Epic', 'Feature', 'Story', 'Task', 'Bug', 'Test'];
         const statusTypes = ['未着手', '着手中', 'クローズ'];
         // デフォルト: 未着手と着手中を選択（Open Only相当）
@@ -356,7 +357,7 @@ export class EpicLadderWebviewProvider {
 
         <div class="scrollable-content">
             <div class="tree-container" id="treeContainer">
-                ${renderEpics(structure.structure)}
+                ${renderEpics(structure.structure, redmineUrl)}
             </div>
         </div>
     </div>

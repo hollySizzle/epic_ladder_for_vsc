@@ -199,10 +199,6 @@ export function getScript(): string {
             }
         });
 
-        function openIssue(issueId) {
-            vscode.postMessage({ command: 'openIssue', issueId });
-        }
-
         function toggleCollapse(header) {
             const item = header.closest('.tree-item');
             if (item) {

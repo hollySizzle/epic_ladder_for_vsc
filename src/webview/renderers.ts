@@ -22,7 +22,7 @@ export interface AssigneeInfo {
 /**
  * Render all epics as HTML tree
  */
-export function renderEpics(epics: ProjectStructureEpic[]): string {
+export function renderEpics(epics: ProjectStructureEpic[], redmineUrl: string): string {
     if (!epics || epics.length === 0) {
         return '<div class="empty-state">No epics found</div>';
     }
@@ -33,11 +33,11 @@ export function renderEpics(epics: ProjectStructureEpic[]): string {
                 <span class="collapse-icon" onclick="event.stopPropagation(); toggleCollapse(this.parentElement)">&#9662;</span>
                 <span class="type-badge badge-epic">Epic</span>
                 ${renderStatusBadge(epic.id, epic.status)}
-                <span class="issue-id" onclick="event.stopPropagation(); openIssue('${epic.id}')">#${epic.id}</span>
+                <a class="issue-id" href="${redmineUrl}/issues/${epic.id}" onclick="event.stopPropagation(); event.preventDefault(); openInBrowser('${redmineUrl}/issues/${epic.id}')">#${epic.id}</a>
                 <span class="issue-subject">${escapeHtml(epic.subject)}</span>
             </div>
             <div class="tree-children">
-                ${renderFeatures(epic.features)}
+                ${renderFeatures(epic.features, redmineUrl)}
             </div>
         </div>
     `).join('');
@@ -46,7 +46,7 @@ export function renderEpics(epics: ProjectStructureEpic[]): string {
 /**
  * Render features as HTML tree
  */
-export function renderFeatures(features: ProjectStructureEpic['features']): string {
+export function renderFeatures(features: ProjectStructureEpic['features'], redmineUrl: string): string {
     if (!features || features.length === 0) {
         return '';
     }
@@ -57,11 +57,11 @@ export function renderFeatures(features: ProjectStructureEpic['features']): stri
                 <span class="collapse-icon" onclick="event.stopPropagation(); toggleCollapse(this.parentElement)">&#9662;</span>
                 <span class="type-badge badge-feature">Feature</span>
                 ${renderStatusBadge(feature.id, feature.status)}
-                <span class="issue-id" onclick="event.stopPropagation(); openIssue('${feature.id}')">#${feature.id}</span>
+                <a class="issue-id" href="${redmineUrl}/issues/${feature.id}" onclick="event.stopPropagation(); event.preventDefault(); openInBrowser('${redmineUrl}/issues/${feature.id}')">#${feature.id}</a>
                 <span class="issue-subject">${escapeHtml(feature.subject)}</span>
             </div>
             <div class="tree-children">
-                ${renderUserStories(feature.user_stories)}
+                ${renderUserStories(feature.user_stories, redmineUrl)}
             </div>
         </div>
     `).join('');
@@ -70,7 +70,7 @@ export function renderFeatures(features: ProjectStructureEpic['features']): stri
 /**
  * Render user stories as HTML tree
  */
-export function renderUserStories(stories: ProjectStructureEpic['features'][0]['user_stories']): string {
+export function renderUserStories(stories: ProjectStructureEpic['features'][0]['user_stories'], redmineUrl: string): string {
     if (!stories || stories.length === 0) {
         return '';
     }
@@ -95,13 +95,13 @@ export function renderUserStories(stories: ProjectStructureEpic['features'][0]['
                     ${hasChildren ? `<span class="collapse-icon" onclick="event.stopPropagation(); toggleCollapse(this.parentElement)">&#9662;</span>` : '<span class="collapse-icon-placeholder"></span>'}
                     <span class="type-badge badge-story">Story</span>
                     ${renderStatusBadge(story.id, story.status)}
-                    <span class="issue-id" onclick="event.stopPropagation(); openIssue('${story.id}')">#${story.id}</span>
+                    <a class="issue-id" href="${redmineUrl}/issues/${story.id}" onclick="event.stopPropagation(); event.preventDefault(); openInBrowser('${redmineUrl}/issues/${story.id}')">#${story.id}</a>
                     <span class="issue-subject">${escapeHtml(story.subject)}</span>
                     ${metaInfo}
                 </div>
                 ${hasChildren ? `
                     <div class="tree-children">
-                        ${renderChildren(story.children!)}
+                        ${renderChildren(story.children!, redmineUrl)}
                     </div>
                 ` : ''}
             </div>
@@ -112,19 +112,19 @@ export function renderUserStories(stories: ProjectStructureEpic['features'][0]['
 /**
  * Render children (tasks, bugs, tests) as HTML
  */
-export function renderChildren(children: NonNullable<ProjectStructureEpic['features'][0]['user_stories'][0]['children']>): string {
+export function renderChildren(children: NonNullable<ProjectStructureEpic['features'][0]['user_stories'][0]['children']>, redmineUrl: string): string {
     const items: string[] = [];
 
     children.tasks.forEach(task => {
-        items.push(renderLeafItem(task, 'Task', 'badge-task'));
+        items.push(renderLeafItem(task, 'Task', 'badge-task', redmineUrl));
     });
 
     children.bugs.forEach(bug => {
-        items.push(renderLeafItem(bug, 'Bug', 'badge-bug'));
+        items.push(renderLeafItem(bug, 'Bug', 'badge-bug', redmineUrl));
     });
 
     children.tests.forEach(test => {
-        items.push(renderLeafItem(test, 'Test', 'badge-test'));
+        items.push(renderLeafItem(test, 'Test', 'badge-test', redmineUrl));
     });
 
     return items.join('');
@@ -136,7 +136,8 @@ export function renderChildren(children: NonNullable<ProjectStructureEpic['featu
 export function renderLeafItem(
     item: { id: string; subject: string; status: { name: string; is_closed: boolean }; assigned_to?: { name: string } },
     type: string,
-    badgeClass: string
+    badgeClass: string,
+    redmineUrl: string
 ): string {
     const metaInfo = item.assigned_to ? `
         <div class="meta-info">
@@ -150,7 +151,7 @@ export function renderLeafItem(
                 <span class="collapse-icon-placeholder"></span>
                 <span class="type-badge ${badgeClass}">${type}</span>
                 ${renderStatusBadge(item.id, item.status)}
-                <span class="issue-id" onclick="event.stopPropagation(); openIssue('${item.id}')">#${item.id}</span>
+                <a class="issue-id" href="${redmineUrl}/issues/${item.id}" onclick="event.stopPropagation(); event.preventDefault(); openInBrowser('${redmineUrl}/issues/${item.id}')">#${item.id}</a>
                 <span class="issue-subject">${escapeHtml(item.subject)}</span>
                 ${metaInfo}
             </div>

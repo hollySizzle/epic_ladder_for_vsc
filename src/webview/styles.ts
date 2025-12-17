@@ -567,10 +567,15 @@ export function getStyles(): string {
             cursor: pointer;
             flex-shrink: 0;
             font-weight: 600;
+            text-decoration: none;
         }
 
         .issue-id:hover {
             text-decoration: underline;
+        }
+
+        a.issue-id:visited {
+            color: var(--vscode-textLink-foreground);
         }
 
         .issue-subject {
