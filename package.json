@@ -2,7 +2,7 @@
   "name": "redmine-epic-ladder",
   "displayName": "Redmine Epic Ladder",
   "description": "VS Code extension for Redmine ticket management with hierarchical Epic/Feature/UserStory view",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "publisher": "hollySizzle",
   "license": "MIT",
   "icon": "resources/icon.png",
@@ -43,7 +43,7 @@
       "activitybar": [
         {
           "id": "redmine-explorer",
-          "title": "Redmine",
+          "title": "Epic Ladder",
           "icon": "resources/redmine.svg"
         }
       ]
