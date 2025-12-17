@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { McpClient, McpError } from './mcpClient';
 import { RedmineIssuesProvider } from './treeView';
-import { EpicLadderWebviewProvider } from './webviewPanel';
+import { EpicLadderWebviewProvider } from './webview';
 
 let mcpClient: McpClient | undefined;
 let issuesProvider: RedmineIssuesProvider;
