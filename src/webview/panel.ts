@@ -89,6 +89,18 @@ export class EpicLadderWebviewProvider {
                     await vscode.env.openExternal(vscode.Uri.parse(message.url));
                 }
                 break;
+            case 'openIssueInBrowser':
+                if (typeof message.issueId === 'string' && this.mcpClient) {
+                    try {
+                        const detail = await this.mcpClient.getIssueDetail(message.issueId);
+                        if (detail.issue?.url) {
+                            await vscode.env.openExternal(vscode.Uri.parse(detail.issue.url));
+                        }
+                    } catch (error) {
+                        console.error('Failed to get issue detail:', error);
+                    }
+                }
+                break;
             case 'filter':
                 await this.updateContent(message as FilterOptions);
                 break;
@@ -207,7 +219,6 @@ export class EpicLadderWebviewProvider {
     ): string {
         const nonce = getNonce();
         const assignees = extractAssignees(structure.structure);
-        const redmineUrl = this.mcpClient?.getRedmineUrl() ?? '';
         const trackerTypes = ['Epic', 'Feature', 'Story', 'Task', 'Bug', 'Test'];
         const statusTypes = ['未着手', '着手中', 'クローズ'];
         // デフォルト: 未着手と着手中を選択（Open Only相当）
@@ -357,7 +368,7 @@ export class EpicLadderWebviewProvider {
 
         <div class="scrollable-content">
             <div class="tree-container" id="treeContainer">
-                ${renderEpics(structure.structure, redmineUrl)}
+                ${renderEpics(structure.structure)}
             </div>
         </div>
     </div>

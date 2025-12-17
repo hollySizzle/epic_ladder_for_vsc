@@ -15,10 +15,8 @@ export class McpClient {
     private httpClient: AxiosInstance;
     private requestId: number = 0;
     private defaultProject?: string;
-    private serverUrl: string;
 
     constructor(config: McpClientConfig) {
-        this.serverUrl = config.serverUrl;
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
             'X-Redmine-API-Key': config.apiKey
@@ -171,20 +169,6 @@ export class McpClient {
         } catch {
             return false;
         }
-    }
-
-    /**
-     * RedmineのベースURLを取得
-     */
-    getRedmineUrl(): string {
-        return this.serverUrl;
-    }
-
-    /**
-     * チケットURLを生成
-     */
-    getIssueUrl(issueId: string): string {
-        return `${this.serverUrl}/issues/${issueId}`;
     }
 }
 

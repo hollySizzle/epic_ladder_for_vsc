@@ -206,6 +206,17 @@ export function getScript(): string {
             }
         }
 
+        // IDクリックでブラウザで開く（詳細取得してURLを使用）
+        function openIssueInBrowser(issueId) {
+            // キャッシュにあればそのURLを使用
+            if (detailCache[issueId] && detailCache[issueId].issue && detailCache[issueId].issue.url) {
+                openInBrowser(detailCache[issueId].issue.url);
+                return;
+            }
+            // なければ詳細を取得してから開く
+            vscode.postMessage({ command: 'openIssueInBrowser', issueId: issueId });
+        }
+
         function applyFilters() {
             const versionId = document.getElementById('versionFilter').value;
             const searchText = document.getElementById('searchInput').value;
