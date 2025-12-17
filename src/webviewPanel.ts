@@ -189,113 +189,117 @@ export class EpicLadderWebviewProvider {
 </head>
 <body>
     <div class="container">
-        <header class="header">
-            <h1>Epic Ladder</h1>
-            <div class="header-actions">
-                <button class="btn btn-icon" onclick="refresh()" title="Refresh">
-                    <span class="codicon">&#8635;</span>
-                </button>
-            </div>
-        </header>
-
-        <button class="filter-toggle" onclick="toggleFilters()">
-            <div class="hamburger">
-                <span></span>
-                <span></span>
-                <span></span>
-            </div>
-            <span>Filters</span>
-            ${activeFilterCount > 0 ? `<span class="filter-badge">${activeFilterCount}</span>` : ''}
-        </button>
-
-        <div class="filters" id="filtersPanel">
-            <div class="filter-row">
-                <div class="filter-group">
-                    <label for="searchInput">Search</label>
-                    <input type="text" id="searchInput" placeholder="Search issues..."
-                        value="${filterOptions?.searchText ?? ''}"
-                        oninput="debounceSearch(this.value)">
-                </div>
-                <div class="filter-group">
-                    <label for="versionFilter">Version</label>
-                    <select id="versionFilter" onchange="applyFilters()">
-                        <option value="">All Versions</option>
-                        ${versions.map(v => `
-                            <option value="${v.id}" ${filterOptions?.versionId === v.id ? 'selected' : ''}>
-                                ${this.escapeHtml(v.name)}
-                            </option>
-                        `).join('')}
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="statusFilter">Status</label>
-                    <select id="statusFilter" onchange="applyFilters()">
-                        <option value="open" ${!filterOptions?.includeClosed ? 'selected' : ''}>Open Only</option>
-                        <option value="all" ${filterOptions?.includeClosed ? 'selected' : ''}>All</option>
-                    </select>
-                </div>
-            </div>
-            <div class="filter-row">
-                <div class="filter-group">
-                    <label for="assigneeFilter">Assignee</label>
-                    <select id="assigneeFilter" onchange="applyClientFilters()">
-                        <option value="">All Assignees</option>
-                        ${assignees.map(a => `
-                            <option value="${a.id}" ${filterOptions?.assigneeId === a.id ? 'selected' : ''}>
-                                ${this.escapeHtml(a.name)}
-                            </option>
-                        `).join('')}
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="trackerFilter">Type</label>
-                    <select id="trackerFilter" onchange="applyClientFilters()">
-                        <option value="">All Types</option>
-                        ${trackerTypes.map(t => `
-                            <option value="${t}" ${filterOptions?.trackerType === t ? 'selected' : ''}>
-                                ${t}
-                            </option>
-                        `).join('')}
-                    </select>
-                </div>
-                <div class="filter-group filter-actions">
-                    <label>&nbsp;</label>
-                    <button class="btn btn-clear" onclick="clearAllFilters()" title="Clear all filters">
-                        Clear Filters
+        <div class="fixed-header">
+            <header class="header">
+                <h1>Epic Ladder</h1>
+                <div class="header-actions">
+                    <button class="btn btn-icon" onclick="refresh()" title="Refresh">
+                        <span class="codicon">&#8635;</span>
                     </button>
                 </div>
-            </div>
-            ${activeFilterCount > 0 ? `
-                <div class="active-filters">
-                    <span class="active-filters-label">Active:</span>
-                    ${this.renderActiveFilterBadges(filterOptions, versions, assignees)}
+            </header>
+
+            <button class="filter-toggle" onclick="toggleFilters()">
+                <div class="hamburger">
+                    <span></span>
+                    <span></span>
+                    <span></span>
                 </div>
-            ` : ''}
+                <span>Filters</span>
+                ${activeFilterCount > 0 ? `<span class="filter-badge">${activeFilterCount}</span>` : ''}
+            </button>
+
+            <div class="filters" id="filtersPanel">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="searchInput">Search</label>
+                        <input type="text" id="searchInput" placeholder="Search issues..."
+                            value="${filterOptions?.searchText ?? ''}"
+                            oninput="debounceSearch(this.value)">
+                    </div>
+                    <div class="filter-group">
+                        <label for="versionFilter">Version</label>
+                        <select id="versionFilter" onchange="applyFilters()">
+                            <option value="">All Versions</option>
+                            ${versions.map(v => `
+                                <option value="${v.id}" ${filterOptions?.versionId === v.id ? 'selected' : ''}>
+                                    ${this.escapeHtml(v.name)}
+                                </option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="statusFilter">Status</label>
+                        <select id="statusFilter" onchange="applyFilters()">
+                            <option value="open" ${!filterOptions?.includeClosed ? 'selected' : ''}>Open Only</option>
+                            <option value="all" ${filterOptions?.includeClosed ? 'selected' : ''}>All</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="assigneeFilter">Assignee</label>
+                        <select id="assigneeFilter" onchange="applyClientFilters()">
+                            <option value="">All Assignees</option>
+                            ${assignees.map(a => `
+                                <option value="${a.id}" ${filterOptions?.assigneeId === a.id ? 'selected' : ''}>
+                                    ${this.escapeHtml(a.name)}
+                                </option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="trackerFilter">Type</label>
+                        <select id="trackerFilter" onchange="applyClientFilters()">
+                            <option value="">All Types</option>
+                            ${trackerTypes.map(t => `
+                                <option value="${t}" ${filterOptions?.trackerType === t ? 'selected' : ''}>
+                                    ${t}
+                                </option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    <div class="filter-group filter-actions">
+                        <label>&nbsp;</label>
+                        <button class="btn btn-clear" onclick="clearAllFilters()" title="Clear all filters">
+                            Clear Filters
+                        </button>
+                    </div>
+                </div>
+                ${activeFilterCount > 0 ? `
+                    <div class="active-filters">
+                        <span class="active-filters-label">Active:</span>
+                        ${this.renderActiveFilterBadges(filterOptions, versions, assignees)}
+                    </div>
+                ` : ''}
+            </div>
+
+            <div class="summary">
+                <span class="summary-item">
+                    <span class="badge badge-epic">${structure.summary.total_epics}</span> Epics
+                </span>
+                <span class="summary-item">
+                    <span class="badge badge-feature">${structure.summary.total_features}</span> Features
+                </span>
+                <span class="summary-item">
+                    <span class="badge badge-story">${structure.summary.total_user_stories}</span> Stories
+                </span>
+                <span class="summary-item">
+                    <span class="badge badge-task">${structure.summary.total_tasks}</span> Tasks
+                </span>
+                <span class="summary-item">
+                    <span class="badge badge-bug">${structure.summary.total_bugs}</span> Bugs
+                </span>
+                <span class="summary-item">
+                    <span class="badge badge-test">${structure.summary.total_tests}</span> Tests
+                </span>
+            </div>
         </div>
 
-        <div class="summary">
-            <span class="summary-item">
-                <span class="badge badge-epic">${structure.summary.total_epics}</span> Epics
-            </span>
-            <span class="summary-item">
-                <span class="badge badge-feature">${structure.summary.total_features}</span> Features
-            </span>
-            <span class="summary-item">
-                <span class="badge badge-story">${structure.summary.total_user_stories}</span> Stories
-            </span>
-            <span class="summary-item">
-                <span class="badge badge-task">${structure.summary.total_tasks}</span> Tasks
-            </span>
-            <span class="summary-item">
-                <span class="badge badge-bug">${structure.summary.total_bugs}</span> Bugs
-            </span>
-            <span class="summary-item">
-                <span class="badge badge-test">${structure.summary.total_tests}</span> Tests
-            </span>
-        </div>
-
-        <div class="tree-container" id="treeContainer">
-            ${this.renderEpics(structure.structure)}
+        <div class="scrollable-content">
+            <div class="tree-container" id="treeContainer">
+                ${this.renderEpics(structure.structure)}
+            </div>
         </div>
     </div>
 
@@ -488,18 +492,31 @@ export class EpicLadderWebviewProvider {
                 padding: 0;
             }
 
+            html, body {
+                height: 100%;
+                margin: 0;
+                overflow: hidden;
+            }
+
             body {
                 font-family: var(--vscode-font-family);
                 font-size: var(--vscode-font-size);
                 color: var(--text-color);
                 background: var(--bg-color);
-                padding: 12px;
                 line-height: 1.5;
             }
 
             .container {
                 max-width: 100%;
+                height: 100%;
+                display: flex;
+                flex-direction: column;
                 container-type: inline-size;
+            }
+
+            .fixed-header {
+                flex-shrink: 0;
+                padding: 12px 12px 0 12px;
             }
 
             .header {
@@ -691,6 +708,14 @@ export class EpicLadderWebviewProvider {
                 padding: 8px;
                 background: var(--vscode-sideBar-background);
                 border-radius: 6px;
+                flex-shrink: 0;
+            }
+
+            .scrollable-content {
+                flex: 1;
+                overflow-y: auto;
+                padding: 0 12px 12px 12px;
+                min-height: 0;
             }
 
             .summary-item {
@@ -954,12 +979,16 @@ export class EpicLadderWebviewProvider {
                Narrow Width Optimization (< 500px)
                ======================================== */
             @container (max-width: 500px) {
-                body {
-                    padding: 8px;
-                }
-
                 :root {
                     --indent-size: 10px;
+                }
+
+                .fixed-header {
+                    padding: 8px 8px 0 8px;
+                }
+
+                .scrollable-content {
+                    padding: 0 8px 8px 8px;
                 }
 
                 .header {
@@ -1619,6 +1648,47 @@ export class EpicLadderWebviewProvider {
 
             // Run on load
             initFilters();
+
+            // ========================================
+            // Search Shortcuts (/, Cmd+F, Ctrl+F)
+            // ========================================
+            function focusSearchInput() {
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) {
+                    // Expand filters panel if collapsed (narrow screen)
+                    const filtersPanel = document.getElementById('filtersPanel');
+                    if (filtersPanel && filtersPanel.classList.contains('collapsed')) {
+                        filtersPanel.classList.remove('collapsed');
+                        filtersCollapsed = false;
+                    }
+                    searchInput.focus();
+                    searchInput.select();
+                }
+            }
+
+            document.addEventListener('keydown', function(event) {
+                // Skip if user is already typing in an input
+                const activeElement = document.activeElement;
+                const isTyping = activeElement && (
+                    activeElement.tagName === 'INPUT' ||
+                    activeElement.tagName === 'TEXTAREA' ||
+                    activeElement.tagName === 'SELECT'
+                );
+
+                // "/" key - focus search when not typing
+                if (event.key === '/' && !isTyping) {
+                    event.preventDefault();
+                    focusSearchInput();
+                    return;
+                }
+
+                // Cmd+F (Mac) or Ctrl+F (Windows/Linux) - always focus search
+                if ((event.metaKey || event.ctrlKey) && event.key === 'f') {
+                    event.preventDefault();
+                    focusSearchInput();
+                    return;
+                }
+            });
 
             // ========================================
             // Status Dropdown Functions
