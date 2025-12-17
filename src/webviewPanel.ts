@@ -172,6 +172,9 @@ export class EpicLadderWebviewProvider {
         filterOptions?: FilterOptions
     ): string {
         const nonce = this.getNonce();
+        const assignees = this.extractAssignees(structure.structure);
+        const trackerTypes = ['Epic', 'Feature', 'Story', 'Task', 'Bug', 'Test'];
+        const activeFilterCount = this.countActiveFilters(filterOptions);
 
         return `<!DOCTYPE html>
 <html lang="ja">
@@ -202,33 +205,72 @@ export class EpicLadderWebviewProvider {
                 <span></span>
             </div>
             <span>Filters</span>
+            ${activeFilterCount > 0 ? `<span class="filter-badge">${activeFilterCount}</span>` : ''}
         </button>
 
         <div class="filters" id="filtersPanel">
-            <div class="filter-group">
-                <label for="searchInput">Search</label>
-                <input type="text" id="searchInput" placeholder="Search issues..."
-                    value="${filterOptions?.searchText ?? ''}"
-                    oninput="debounceSearch(this.value)">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="searchInput">Search</label>
+                    <input type="text" id="searchInput" placeholder="Search issues..."
+                        value="${filterOptions?.searchText ?? ''}"
+                        oninput="debounceSearch(this.value)">
+                </div>
+                <div class="filter-group">
+                    <label for="versionFilter">Version</label>
+                    <select id="versionFilter" onchange="applyFilters()">
+                        <option value="">All Versions</option>
+                        ${versions.map(v => `
+                            <option value="${v.id}" ${filterOptions?.versionId === v.id ? 'selected' : ''}>
+                                ${this.escapeHtml(v.name)}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="statusFilter">Status</label>
+                    <select id="statusFilter" onchange="applyFilters()">
+                        <option value="open" ${!filterOptions?.includeClosed ? 'selected' : ''}>Open Only</option>
+                        <option value="all" ${filterOptions?.includeClosed ? 'selected' : ''}>All</option>
+                    </select>
+                </div>
             </div>
-            <div class="filter-group">
-                <label for="versionFilter">Version</label>
-                <select id="versionFilter" onchange="applyFilters()">
-                    <option value="">All Versions</option>
-                    ${versions.map(v => `
-                        <option value="${v.id}" ${filterOptions?.versionId === v.id ? 'selected' : ''}>
-                            ${this.escapeHtml(v.name)}
-                        </option>
-                    `).join('')}
-                </select>
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="assigneeFilter">Assignee</label>
+                    <select id="assigneeFilter" onchange="applyClientFilters()">
+                        <option value="">All Assignees</option>
+                        ${assignees.map(a => `
+                            <option value="${a.id}" ${filterOptions?.assigneeId === a.id ? 'selected' : ''}>
+                                ${this.escapeHtml(a.name)}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="trackerFilter">Type</label>
+                    <select id="trackerFilter" onchange="applyClientFilters()">
+                        <option value="">All Types</option>
+                        ${trackerTypes.map(t => `
+                            <option value="${t}" ${filterOptions?.trackerType === t ? 'selected' : ''}>
+                                ${t}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+                <div class="filter-group filter-actions">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-clear" onclick="clearAllFilters()" title="Clear all filters">
+                        Clear Filters
+                    </button>
+                </div>
             </div>
-            <div class="filter-group">
-                <label for="statusFilter">Status</label>
-                <select id="statusFilter" onchange="applyFilters()">
-                    <option value="open" ${!filterOptions?.includeClosed ? 'selected' : ''}>Open Only</option>
-                    <option value="all" ${filterOptions?.includeClosed ? 'selected' : ''}>All</option>
-                </select>
-            </div>
+            ${activeFilterCount > 0 ? `
+                <div class="active-filters">
+                    <span class="active-filters-label">Active:</span>
+                    ${this.renderActiveFilterBadges(filterOptions, versions, assignees)}
+                </div>
+            ` : ''}
         </div>
 
         <div class="summary">
@@ -528,10 +570,19 @@ export class EpicLadderWebviewProvider {
                 border-radius: 1px;
             }
 
+            .filter-badge {
+                background: var(--vscode-badge-background);
+                color: var(--vscode-badge-foreground);
+                font-size: 10px;
+                padding: 2px 6px;
+                border-radius: 10px;
+                margin-left: auto;
+            }
+
             .filters {
                 display: flex;
-                gap: 12px;
-                flex-wrap: wrap;
+                flex-direction: column;
+                gap: 10px;
                 margin-bottom: 12px;
                 padding: 12px;
                 background: var(--vscode-sideBar-background);
@@ -542,12 +593,72 @@ export class EpicLadderWebviewProvider {
                 display: none;
             }
 
+            .filter-row {
+                display: flex;
+                gap: 12px;
+                flex-wrap: wrap;
+            }
+
             .filter-group {
                 display: flex;
                 flex-direction: column;
                 gap: 4px;
                 flex: 1;
                 min-width: 120px;
+            }
+
+            .filter-actions {
+                flex: 0 0 auto;
+                min-width: auto;
+            }
+
+            .btn-clear {
+                background: transparent;
+                color: var(--vscode-textLink-foreground);
+                border: 1px solid var(--border-color);
+                font-size: 12px;
+                padding: 5px 10px;
+            }
+
+            .btn-clear:hover {
+                background: var(--hover-bg);
+            }
+
+            .active-filters {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                align-items: center;
+                padding-top: 8px;
+                border-top: 1px solid var(--border-color);
+            }
+
+            .active-filters-label {
+                font-size: 10px;
+                color: var(--vscode-descriptionForeground);
+                text-transform: uppercase;
+            }
+
+            .active-filter-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                background: var(--vscode-badge-background);
+                color: var(--vscode-badge-foreground);
+                padding: 3px 8px;
+                border-radius: 12px;
+                font-size: 11px;
+            }
+
+            .remove-filter {
+                cursor: pointer;
+                opacity: 0.7;
+                font-weight: bold;
+                padding: 0 2px;
+            }
+
+            .remove-filter:hover {
+                opacity: 1;
             }
 
             .filter-group label {
@@ -853,14 +964,36 @@ export class EpicLadderWebviewProvider {
 
                 /* Filters become collapsible */
                 .filters {
-                    flex-direction: column;
                     gap: 8px;
                     padding: 10px;
                     margin-bottom: 8px;
                 }
 
+                .filter-row {
+                    flex-direction: column;
+                    gap: 8px;
+                }
+
                 .filter-group {
                     min-width: unset;
+                }
+
+                .filter-actions {
+                    flex: 1;
+                }
+
+                .btn-clear {
+                    width: 100%;
+                }
+
+                .active-filters {
+                    flex-direction: row;
+                    padding-top: 6px;
+                }
+
+                .active-filter-badge {
+                    font-size: 10px;
+                    padding: 2px 6px;
                 }
 
                 /* Summary wraps into 2 rows */
@@ -1546,32 +1679,74 @@ export class EpicLadderWebviewProvider {
                 });
             }
 
+            function applyClientFilters() {
+                const searchText = document.getElementById('searchInput').value;
+                const assigneeId = document.getElementById('assigneeFilter').value;
+                const trackerType = document.getElementById('trackerFilter').value;
+
+                filterByMultipleCriteria(searchText, assigneeId, trackerType);
+            }
+
             function debounceSearch(value) {
                 clearTimeout(searchTimeout);
                 searchTimeout = setTimeout(() => {
-                    filterBySearch(value);
+                    applyClientFilters();
                 }, 300);
             }
 
-            function filterBySearch(searchText) {
+            function filterByMultipleCriteria(searchText, assigneeId, trackerType) {
                 const items = document.querySelectorAll('.tree-item');
-                const searchLower = searchText.toLowerCase();
+                const searchLower = (searchText || '').toLowerCase();
 
-                if (!searchText) {
-                    items.forEach(item => {
-                        item.classList.remove('search-hidden', 'search-match');
-                    });
+                // Reset all items first
+                items.forEach(item => {
+                    item.classList.remove('search-hidden', 'search-match');
+                });
+
+                // If no filters are active, we're done
+                if (!searchText && !assigneeId && !trackerType) {
                     return;
                 }
 
                 items.forEach(item => {
-                    const subject = item.querySelector('.issue-subject');
-                    const id = item.querySelector('.issue-id');
-                    const text = (subject?.textContent || '') + ' ' + (id?.textContent || '');
+                    let matches = true;
 
-                    if (text.toLowerCase().includes(searchLower)) {
+                    // Check search text
+                    if (searchText) {
+                        const subject = item.querySelector('.issue-subject');
+                        const id = item.querySelector('.issue-id');
+                        const text = (subject?.textContent || '') + ' ' + (id?.textContent || '');
+                        if (!text.toLowerCase().includes(searchLower)) {
+                            matches = false;
+                        }
+                    }
+
+                    // Check assignee
+                    if (matches && assigneeId) {
+                        const assigneeElem = item.querySelector('.assignee');
+                        const itemAssignee = assigneeElem?.textContent || '';
+                        // Get selected assignee name from dropdown
+                        const assigneeSelect = document.getElementById('assigneeFilter');
+                        const selectedAssigneeName = assigneeSelect.options[assigneeSelect.selectedIndex]?.text || '';
+                        if (!itemAssignee.includes(selectedAssigneeName.replace('@', ''))) {
+                            matches = false;
+                        }
+                    }
+
+                    // Check tracker type
+                    if (matches && trackerType) {
+                        const typeBadge = item.querySelector('.type-badge');
+                        const itemType = typeBadge?.textContent?.trim() || '';
+                        if (itemType.toLowerCase() !== trackerType.toLowerCase()) {
+                            matches = false;
+                        }
+                    }
+
+                    if (matches) {
                         item.classList.remove('search-hidden');
-                        item.classList.add('search-match');
+                        if (searchText) {
+                            item.classList.add('search-match');
+                        }
                         // Expand parent items
                         let parent = item.parentElement?.closest('.tree-item');
                         while (parent) {
@@ -1593,6 +1768,52 @@ export class EpicLadderWebviewProvider {
                         }
                     }
                 });
+            }
+
+            function clearAllFilters() {
+                document.getElementById('searchInput').value = '';
+                document.getElementById('versionFilter').value = '';
+                document.getElementById('statusFilter').value = 'open';
+                document.getElementById('assigneeFilter').value = '';
+                document.getElementById('trackerFilter').value = '';
+
+                // Reset all items
+                const items = document.querySelectorAll('.tree-item');
+                items.forEach(item => {
+                    item.classList.remove('search-hidden', 'search-match');
+                });
+
+                // Reapply server-side filters
+                applyFilters();
+            }
+
+            function clearFilter(filterType) {
+                switch(filterType) {
+                    case 'search':
+                        document.getElementById('searchInput').value = '';
+                        applyClientFilters();
+                        break;
+                    case 'version':
+                        document.getElementById('versionFilter').value = '';
+                        applyFilters();
+                        break;
+                    case 'status':
+                        document.getElementById('statusFilter').value = 'open';
+                        applyFilters();
+                        break;
+                    case 'assignee':
+                        document.getElementById('assigneeFilter').value = '';
+                        applyClientFilters();
+                        break;
+                    case 'tracker':
+                        document.getElementById('trackerFilter').value = '';
+                        applyClientFilters();
+                        break;
+                }
+            }
+
+            function filterBySearch(searchText) {
+                applyClientFilters();
             }
 
             // Expand all button
@@ -2140,6 +2361,96 @@ export class EpicLadderWebviewProvider {
         return text.replace(/[&<>"']/g, m => map[m]);
     }
 
+    private extractAssignees(structure: ProjectStructureEpic[]): AssigneeInfo[] {
+        const assigneeMap = new Map<string, string>();
+
+        for (const epic of structure) {
+            for (const feature of epic.features || []) {
+                for (const story of feature.user_stories || []) {
+                    if (story.assigned_to) {
+                        assigneeMap.set(story.assigned_to.id, story.assigned_to.name);
+                    }
+                    if (story.children) {
+                        for (const task of story.children.tasks || []) {
+                            if (task.assigned_to) {
+                                assigneeMap.set(task.assigned_to.id, task.assigned_to.name);
+                            }
+                        }
+                        for (const bug of story.children.bugs || []) {
+                            if (bug.assigned_to) {
+                                assigneeMap.set(bug.assigned_to.id, bug.assigned_to.name);
+                            }
+                        }
+                        for (const test of story.children.tests || []) {
+                            if (test.assigned_to) {
+                                assigneeMap.set(test.assigned_to.id, test.assigned_to.name);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return Array.from(assigneeMap.entries())
+            .map(([id, name]) => ({ id, name }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    private countActiveFilters(filterOptions?: FilterOptions): number {
+        if (!filterOptions) return 0;
+        let count = 0;
+        if (filterOptions.searchText) count++;
+        if (filterOptions.versionId) count++;
+        if (filterOptions.includeClosed) count++;
+        if (filterOptions.assigneeId) count++;
+        if (filterOptions.trackerType) count++;
+        return count;
+    }
+
+    private renderActiveFilterBadges(
+        filterOptions: FilterOptions | undefined,
+        versions: RedmineVersion[],
+        assignees: AssigneeInfo[]
+    ): string {
+        if (!filterOptions) return '';
+        const badges: string[] = [];
+
+        if (filterOptions.searchText) {
+            badges.push(`<span class="active-filter-badge" data-filter="search">
+                Search: "${this.escapeHtml(filterOptions.searchText)}"
+                <span class="remove-filter" onclick="clearFilter('search')">×</span>
+            </span>`);
+        }
+        if (filterOptions.versionId) {
+            const version = versions.find(v => v.id === filterOptions.versionId);
+            badges.push(`<span class="active-filter-badge" data-filter="version">
+                Version: ${this.escapeHtml(version?.name || filterOptions.versionId)}
+                <span class="remove-filter" onclick="clearFilter('version')">×</span>
+            </span>`);
+        }
+        if (filterOptions.includeClosed) {
+            badges.push(`<span class="active-filter-badge" data-filter="status">
+                Including Closed
+                <span class="remove-filter" onclick="clearFilter('status')">×</span>
+            </span>`);
+        }
+        if (filterOptions.assigneeId) {
+            const assignee = assignees.find(a => a.id === filterOptions.assigneeId);
+            badges.push(`<span class="active-filter-badge" data-filter="assignee">
+                Assignee: ${this.escapeHtml(assignee?.name || filterOptions.assigneeId)}
+                <span class="remove-filter" onclick="clearFilter('assignee')">×</span>
+            </span>`);
+        }
+        if (filterOptions.trackerType) {
+            badges.push(`<span class="active-filter-badge" data-filter="tracker">
+                Type: ${this.escapeHtml(filterOptions.trackerType)}
+                <span class="remove-filter" onclick="clearFilter('tracker')">×</span>
+            </span>`);
+        }
+
+        return badges.join('');
+    }
+
     private getNonce(): string {
         let text = '';
         const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -2160,4 +2471,10 @@ interface FilterOptions {
     includeClosed?: boolean;
     searchText?: string;
     assigneeId?: string;
+    trackerType?: string;
+}
+
+interface AssigneeInfo {
+    id: string;
+    name: string;
 }
