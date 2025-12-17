@@ -146,14 +146,16 @@ export class EpicLadderWebviewProvider {
                         await this.mcpClient.addIssueComment(message.issueId, message.comment);
                         this.panel?.webview.postMessage({
                             command: 'commentSuccess',
-                            issueId: message.issueId
+                            issueId: message.issueId,
+                            fromModal: message.fromModal || false
                         });
                     } catch (error) {
                         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
                         this.panel?.webview.postMessage({
                             command: 'commentError',
                             issueId: message.issueId,
-                            error: errorMessage
+                            error: errorMessage,
+                            fromModal: message.fromModal || false
                         });
                     }
                 }
@@ -372,6 +374,33 @@ export class EpicLadderWebviewProvider {
         <div class="scrollable-content">
             <div class="tree-container" id="treeContainer">
                 ${this.renderEpics(structure.structure)}
+            </div>
+        </div>
+    </div>
+
+    <!-- Comments Modal -->
+    <div class="modal-overlay" id="commentsModal" onclick="if(event.target === this) closeCommentsModal()">
+        <div class="modal-container">
+            <div class="modal-header">
+                <div class="modal-title">
+                    Comments & History
+                    <span class="comments-count" id="modalCommentsCount">0</span>
+                </div>
+                <button class="modal-close-btn" onclick="closeCommentsModal()" title="Close">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-comments-list" id="modalCommentsList">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="modal-comment-input-wrapper">
+                    <textarea class="modal-comment-textarea" id="modalCommentInput" placeholder="Enter your comment..."></textarea>
+                    <div class="modal-comment-actions">
+                        <span class="comment-submit-success" id="modalCommentSuccess">&#10003; Comment added</span>
+                        <span class="comment-submit-error" id="modalCommentError"></span>
+                        <button class="comment-submit-btn" id="modalCommentBtn" onclick="submitModalComment()">Add Comment</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1874,6 +1903,217 @@ export class EpicLadderWebviewProvider {
                     min-height: 60px;
                 }
             }
+
+            /* ========================================
+               Modal Styles
+               ======================================== */
+            .modal-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.6);
+                display: none;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+                padding: 20px;
+            }
+
+            .modal-overlay.open {
+                display: flex;
+            }
+
+            .modal-container {
+                background: var(--vscode-editor-background);
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+                width: 100%;
+                max-width: 800px;
+                max-height: 90vh;
+                display: flex;
+                flex-direction: column;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            }
+
+            .modal-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 12px 16px;
+                border-bottom: 1px solid var(--border-color);
+                flex-shrink: 0;
+            }
+
+            .modal-title {
+                font-size: 14px;
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .modal-title .comments-count {
+                background: var(--vscode-badge-background);
+                color: var(--vscode-badge-foreground);
+                padding: 2px 8px;
+                border-radius: 10px;
+                font-size: 11px;
+            }
+
+            .modal-close-btn {
+                background: transparent;
+                border: none;
+                color: var(--text-color);
+                cursor: pointer;
+                padding: 4px 8px;
+                font-size: 18px;
+                line-height: 1;
+                opacity: 0.7;
+                border-radius: 4px;
+            }
+
+            .modal-close-btn:hover {
+                opacity: 1;
+                background: var(--vscode-toolbar-hoverBackground);
+            }
+
+            .modal-body {
+                flex: 1;
+                overflow-y: auto;
+                padding: 16px;
+            }
+
+            .modal-comments-list {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .modal-comment-item {
+                padding: 12px;
+                background: var(--vscode-editorWidget-background);
+                border: 1px solid var(--border-color);
+                border-radius: 6px;
+            }
+
+            .modal-comment-header {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 8px;
+            }
+
+            .modal-comment-author {
+                font-weight: 600;
+                font-size: 13px;
+                color: var(--vscode-textLink-foreground);
+            }
+
+            .modal-comment-date {
+                font-size: 11px;
+                color: var(--vscode-descriptionForeground);
+            }
+
+            .modal-comment-body {
+                font-size: 13px;
+                line-height: 1.6;
+            }
+
+            .modal-comment-body p {
+                margin: 8px 0;
+            }
+
+            .modal-comment-body ul,
+            .modal-comment-body ol {
+                margin: 8px 0;
+                padding-left: 24px;
+            }
+
+            .modal-comment-body code {
+                background: var(--vscode-textCodeBlock-background);
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-family: var(--vscode-editor-font-family);
+                font-size: 0.9em;
+            }
+
+            .modal-comment-body pre {
+                background: var(--vscode-textCodeBlock-background);
+                padding: 12px;
+                border-radius: 6px;
+                overflow-x: auto;
+                margin: 10px 0;
+            }
+
+            .modal-comment-changes {
+                margin-top: 8px;
+                padding-top: 8px;
+                border-top: 1px dashed var(--border-color);
+            }
+
+            .modal-footer {
+                padding: 12px 16px;
+                border-top: 1px solid var(--border-color);
+                flex-shrink: 0;
+            }
+
+            .modal-comment-input-wrapper {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .modal-comment-textarea {
+                width: 100%;
+                min-height: 100px;
+                padding: 10px;
+                background: var(--input-bg);
+                color: var(--text-color);
+                border: 1px solid var(--input-border);
+                border-radius: 6px;
+                font-family: var(--vscode-font-family);
+                font-size: 13px;
+                resize: vertical;
+            }
+
+            .modal-comment-textarea:focus {
+                outline: 1px solid var(--vscode-focusBorder);
+            }
+
+            .modal-comment-actions {
+                display: flex;
+                justify-content: flex-end;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .expand-btn {
+                background: transparent;
+                border: none;
+                color: var(--vscode-textLink-foreground);
+                cursor: pointer;
+                padding: 2px 6px;
+                font-size: 12px;
+                opacity: 0.8;
+                border-radius: 3px;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+
+            .expand-btn:hover {
+                opacity: 1;
+                background: var(--vscode-toolbar-hoverBackground);
+            }
+
+            .no-modal-comments {
+                text-align: center;
+                color: var(--vscode-descriptionForeground);
+                padding: 40px 20px;
+                font-size: 13px;
+            }
         `;
     }
 
@@ -2437,14 +2677,22 @@ export class EpicLadderWebviewProvider {
                         detailCache[message.issueId] = message.detail;
                         renderDetailPanel(panel, message.detail);
                     }
+                    // Also update modal if open
+                    updateModalIfOpen(message.issueId, message.detail);
                 } else if (message.command === 'issueDetailError') {
                     const panel = document.querySelector('.tree-item[data-id="' + message.issueId + '"] .issue-detail-panel');
                     if (panel) {
                         panel.innerHTML = '<div class="detail-error">Error: ' + escapeHtml(message.error) + '</div>';
                     }
                 } else if (message.command === 'commentSuccess') {
+                    if (message.fromModal) {
+                        onModalCommentSuccess();
+                    }
                     onCommentSuccess(message.issueId);
                 } else if (message.command === 'commentError') {
+                    if (message.fromModal) {
+                        onModalCommentError(message.error);
+                    }
                     onCommentError(message.issueId, message.error);
                 } else if (message.command === 'statusUpdateSuccess') {
                     onStatusUpdateSuccess(message.issueId, message.newStatus);
@@ -2541,6 +2789,7 @@ export class EpicLadderWebviewProvider {
                         '<div class="detail-comments-label">' +
                             'Comments & History' +
                             '<span class="comments-count">' + journals.length + '</span>' +
+                            '<button class="expand-btn" onclick="openCommentsModal(\\'' + issue.id + '\\')" title="Expand">&#8599;</button>' +
                         '</div>' +
                         '<div class="comments-list">' +
                             renderJournals(journals) +
@@ -2726,6 +2975,188 @@ export class EpicLadderWebviewProvider {
                 if (errorMsg) {
                     errorMsg.textContent = errorMessage || 'Failed to add comment';
                     errorMsg.classList.add('show');
+                }
+            }
+
+            // ========================================
+            // Comments Modal
+            // ========================================
+            let currentModalIssueId = null;
+
+            function openCommentsModal(issueId) {
+                currentModalIssueId = issueId;
+                const modal = document.getElementById('commentsModal');
+                const countEl = document.getElementById('modalCommentsCount');
+                const listEl = document.getElementById('modalCommentsList');
+
+                if (!modal) return;
+
+                // Get journals from cache
+                const detail = detailCache[issueId];
+                if (!detail) {
+                    // If not in cache, try to get from DOM
+                    modal.classList.add('open');
+                    listEl.innerHTML = '<div class="no-modal-comments">Loading...</div>';
+                    vscode.postMessage({ command: 'getIssueDetail', issueId: issueId });
+                    return;
+                }
+
+                const journals = detail.journals || [];
+                countEl.textContent = journals.length;
+                listEl.innerHTML = renderModalJournals(journals);
+                modal.classList.add('open');
+
+                // Reset input
+                const textarea = document.getElementById('modalCommentInput');
+                if (textarea) textarea.value = '';
+
+                // Add keyboard listener for Escape
+                document.addEventListener('keydown', handleModalKeydown);
+            }
+
+            function closeCommentsModal() {
+                const modal = document.getElementById('commentsModal');
+                if (modal) {
+                    modal.classList.remove('open');
+                }
+                currentModalIssueId = null;
+                document.removeEventListener('keydown', handleModalKeydown);
+            }
+
+            function handleModalKeydown(e) {
+                if (e.key === 'Escape') {
+                    closeCommentsModal();
+                }
+            }
+
+            function renderModalJournals(journals) {
+                if (!journals || journals.length === 0) {
+                    return '<div class="no-modal-comments">No comments or changes yet</div>';
+                }
+
+                return journals.map(function(journal) {
+                    const hasNotes = journal.notes && journal.notes.trim().length > 0;
+                    const hasChanges = journal.details && journal.details.length > 0;
+
+                    if (!hasNotes && !hasChanges) {
+                        return '';
+                    }
+
+                    const date = formatDate(journal.created_on);
+                    const author = journal.user ? journal.user.name : 'Unknown';
+
+                    let html = '<div class="modal-comment-item">';
+                    html += '<div class="modal-comment-header">';
+                    html += '<span class="modal-comment-author">' + escapeHtml(author) + '</span>';
+                    html += '<span class="modal-comment-date">' + escapeHtml(date) + '</span>';
+                    html += '</div>';
+
+                    if (hasNotes) {
+                        html += '<div class="modal-comment-body">' + (journal.notesHtml || renderMarkdown(journal.notes)) + '</div>';
+                    }
+
+                    if (hasChanges) {
+                        html += '<div class="modal-comment-changes">';
+                        journal.details.forEach(function(detail) {
+                            html += renderChangeDetail(detail);
+                        });
+                        html += '</div>';
+                    }
+
+                    html += '</div>';
+                    return html;
+                }).join('');
+            }
+
+            function submitModalComment() {
+                const textarea = document.getElementById('modalCommentInput');
+                const btn = document.getElementById('modalCommentBtn');
+                const successMsg = document.getElementById('modalCommentSuccess');
+                const errorMsg = document.getElementById('modalCommentError');
+
+                if (!textarea || !btn || !currentModalIssueId) return;
+
+                const comment = textarea.value.trim();
+                if (!comment) {
+                    errorMsg.textContent = 'Please enter a comment';
+                    errorMsg.classList.add('show');
+                    setTimeout(() => errorMsg.classList.remove('show'), 3000);
+                    return;
+                }
+
+                // Reset messages
+                successMsg.classList.remove('show');
+                errorMsg.classList.remove('show');
+
+                // Set loading state
+                btn.disabled = true;
+                btn.classList.add('loading');
+                btn.textContent = '';
+
+                vscode.postMessage({
+                    command: 'addComment',
+                    issueId: currentModalIssueId,
+                    comment: comment,
+                    fromModal: true
+                });
+            }
+
+            function onModalCommentSuccess() {
+                const textarea = document.getElementById('modalCommentInput');
+                const btn = document.getElementById('modalCommentBtn');
+                const successMsg = document.getElementById('modalCommentSuccess');
+                const errorMsg = document.getElementById('modalCommentError');
+
+                if (btn) {
+                    btn.disabled = false;
+                    btn.classList.remove('loading');
+                    btn.textContent = 'Add Comment';
+                }
+
+                if (textarea) {
+                    textarea.value = '';
+                }
+
+                if (successMsg) {
+                    successMsg.classList.add('show');
+                    setTimeout(() => successMsg.classList.remove('show'), 3000);
+                }
+
+                if (errorMsg) {
+                    errorMsg.classList.remove('show');
+                }
+
+                // Refresh modal content
+                if (currentModalIssueId) {
+                    delete detailCache[currentModalIssueId];
+                    vscode.postMessage({ command: 'getIssueDetail', issueId: currentModalIssueId });
+                }
+            }
+
+            function onModalCommentError(errorMessage) {
+                const btn = document.getElementById('modalCommentBtn');
+                const errorMsg = document.getElementById('modalCommentError');
+
+                if (btn) {
+                    btn.disabled = false;
+                    btn.classList.remove('loading');
+                    btn.textContent = 'Add Comment';
+                }
+
+                if (errorMsg) {
+                    errorMsg.textContent = errorMessage || 'Failed to add comment';
+                    errorMsg.classList.add('show');
+                }
+            }
+
+            // Update modal when detail is loaded
+            function updateModalIfOpen(issueId, detail) {
+                if (currentModalIssueId === issueId) {
+                    const countEl = document.getElementById('modalCommentsCount');
+                    const listEl = document.getElementById('modalCommentsList');
+                    const journals = detail.journals || [];
+                    if (countEl) countEl.textContent = journals.length;
+                    if (listEl) listEl.innerHTML = renderModalJournals(journals);
                 }
             }
 
