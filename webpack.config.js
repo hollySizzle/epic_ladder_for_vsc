@@ -1,6 +1,7 @@
 'use strict';
 
 const path = require('path');
+const webpack = require('webpack');
 
 /** @type {import('webpack').Configuration} */
 const config = {
@@ -32,6 +33,13 @@ const config = {
       }
     ]
   },
+  plugins: [
+    // Define navigator as undefined for Node.js environment
+    // This prevents deprecation warnings from axios and other libraries
+    new webpack.DefinePlugin({
+      'navigator': 'undefined'
+    })
+  ],
   devtool: 'nosources-source-map',
   infrastructureLogging: {
     level: 'log'
