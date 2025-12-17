@@ -770,6 +770,19 @@ export class EpicLadderWebviewProvider {
             .tree-children {
                 padding-left: var(--indent-size);
                 border-top: 1px solid var(--border-color);
+                position: relative;
+            }
+
+            /* Indent guide (vertical line) for tree hierarchy */
+            .tree-children::before {
+                content: '';
+                position: absolute;
+                left: 10px;
+                top: 0;
+                bottom: 0;
+                width: 1px;
+                background: var(--vscode-tree-indentGuidesStroke, var(--border-color));
+                opacity: 0.5;
             }
 
             .type-badge {
@@ -1063,6 +1076,11 @@ export class EpicLadderWebviewProvider {
                 .tree-children {
                     padding-left: 10px;
                 }
+
+                /* Adjust indent guide position for narrow width */
+                .tree-children::before {
+                    left: 4px;
+                }
             }
 
             /* Extra narrow (< 350px) */
@@ -1091,6 +1109,11 @@ export class EpicLadderWebviewProvider {
 
                 .tree-children {
                     padding-left: 8px;
+                }
+
+                /* Adjust indent guide position for extra narrow width */
+                .tree-children::before {
+                    left: 3px;
                 }
 
                 .summary-item {
