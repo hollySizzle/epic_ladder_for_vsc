@@ -798,17 +798,24 @@ export function getStyles(): string {
             }
 
             .filter-row {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
+                display: flex;
+                flex-wrap: wrap;
                 gap: 8px;
             }
 
             .filter-group {
-                min-width: unset;
+                flex: 1 1 45%;
+                min-width: 100px;
+            }
+
+            /* 全幅にする要素 */
+            .filter-group-search,
+            .filter-group-status {
+                flex: 1 1 100%;
             }
 
             .filter-actions {
-                grid-column: span 2;
+                flex: 1 1 100%;
             }
 
             .btn-clear {

@@ -313,13 +313,13 @@ export class EpicLadderWebviewProvider {
 
             <div class="filters" id="filtersPanel">
                 <div class="filter-row">
-                    <div class="filter-group">
+                    <div class="filter-group filter-group-search">
                         <label for="searchInput">Search</label>
                         <input type="text" id="searchInput" placeholder="Search issues..."
                             value="${filterOptions?.searchText ?? ''}"
                             oninput="debounceSearch(this.value)">
                     </div>
-                    <div class="filter-group">
+                    <div class="filter-group filter-group-version">
                         <label for="versionFilter">Version</label>
                         <select id="versionFilter" onchange="applyFilters()">
                             <option value="">All Versions</option>
