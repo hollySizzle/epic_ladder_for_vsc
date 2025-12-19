@@ -692,7 +692,6 @@ export function getScript(): string {
         // ========================================
         // Issue Detail (Modal Display)
         // ========================================
-        let currentDetailIssueId = null;
         const detailCache = {};
         const issueHistoryStack = []; // 履歴スタック for 戻るボタン
 
@@ -707,7 +706,6 @@ export function getScript(): string {
                 issueHistoryStack.push(currentModalIssueId);
             }
 
-            currentDetailIssueId = issueId;
             currentModalIssueId = issueId;
             const modal = document.getElementById('commentsModal');
 
@@ -718,7 +716,15 @@ export function getScript(): string {
 
             // Check cache first
             if (detailCache[issueId]) {
-                renderDetailModal(detailCache[issueId]);
+                try {
+                    renderDetailModal(detailCache[issueId]);
+                } catch (e) {
+                    console.error('Failed to render cached detail modal:', e);
+                    const bodyEl = document.getElementById('modalCommentsList');
+                    if (bodyEl) {
+                        bodyEl.innerHTML = '<div class="detail-error">Error rendering detail: ' + escapeHtml(e.message || 'Unknown error') + '</div>';
+                    }
+                }
             } else {
                 // Show loading state
                 const bodyEl = document.getElementById('modalCommentsList');
@@ -755,7 +761,15 @@ export function getScript(): string {
                 detailCache[message.issueId] = message.detail;
                 // Update modal if open
                 if (currentModalIssueId === message.issueId) {
-                    renderDetailModal(message.detail);
+                    try {
+                        renderDetailModal(message.detail);
+                    } catch (e) {
+                        console.error('Failed to render detail modal:', e);
+                        const bodyEl = document.getElementById('modalCommentsList');
+                        if (bodyEl) {
+                            bodyEl.innerHTML = '<div class="detail-error">Error rendering detail: ' + escapeHtml(e.message || 'Unknown error') + '</div>';
+                        }
+                    }
                 }
             } else if (message.command === 'issueDetailError') {
                 if (currentModalIssueId === message.issueId) {
@@ -894,16 +908,21 @@ export function getScript(): string {
         }
 
         function renderDetailModal(detail) {
+            if (!detail || !detail.issue) {
+                throw new Error('Invalid detail data');
+            }
             const issue = detail.issue;
             const journals = detail.journals || [];
             const children = detail.children || [];
             const assignee = issue.assigned_to ? issue.assigned_to.name : 'Unassigned';
-            const assigneeId = issue.assigned_to ? issue.assigned_to.id : '';
+            const assigneeId = issue.assigned_to ? String(issue.assigned_to.id) : '';
             const version = issue.fixed_version ? issue.fixed_version.name : 'None';
             const doneRatio = issue.done_ratio || 0;
-            const currentStatus = issue.status.name;
+            const currentStatus = issue.status ? issue.status.name : 'Unknown';
             const parent = issue.parent;
             const tracker = issue.tracker ? issue.tracker.name : '';
+            const issueUrl = issue.url || '';
+            const issueId = String(issue.id);
 
             // Update modal title with back button
             const titleEl = document.querySelector('.modal-title');
@@ -913,9 +932,9 @@ export function getScript(): string {
                     : '';
                 titleEl.innerHTML = backBtn +
                     '<span class="modal-tracker-badge">' + escapeHtml(tracker) + '</span>' +
-                    '<span class="modal-issue-id" onclick="openInBrowser(\\'' + escapeHtml(issue.url) + '\\')" title="Open in browser">#' + issue.id + '</span>' +
-                    '<span class="modal-copy-btn" onclick="copyModalIssueUrl(\\'' + escapeHtml(issue.url) + '\\', \\'' + issue.id + '\\')" title="Copy URL">Copy</span> ' +
-                    '<span class="modal-subject">' + escapeHtml(issue.subject) + '</span>';
+                    '<span class="modal-issue-id" onclick="openInBrowser(\\'' + escapeHtml(issueUrl) + '\\')" title="Open in browser">#' + issueId + '</span>' +
+                    '<span class="modal-copy-btn" onclick="copyModalIssueUrl(\\'' + escapeHtml(issueUrl) + '\\', \\'' + issueId + '\\')" title="Copy URL">Copy</span> ' +
+                    '<span class="modal-subject">' + escapeHtml(issue.subject || '') + '</span>';
             }
 
             // Build status dropdown options
@@ -931,12 +950,13 @@ export function getScript(): string {
             }).join('');
 
             // Build parent issue section
-            const parentHtml = parent
+            const parentHtml = parent && parent.id
                 ? '<div class="modal-parent-issue">' +
                       '<div class="modal-section-label">Parent Issue</div>' +
-                      '<div class="issue-link-item" onclick="navigateToIssue(\\'' + parent.id + '\\')">' +
-                          '<span class="issue-link-id">#' + parent.id + '</span>' +
-                          '<span class="issue-link-subject">' + escapeHtml(parent.subject) + '</span>' +
+                      '<div class="issue-link-item" onclick="navigateToIssue(\\'' + String(parent.id) + '\\')">' +
+                          '<span class="nav-arrow-up">↑</span>' +
+                          '<span class="issue-link-id">#' + String(parent.id) + '</span>' +
+                          '<span class="issue-link-subject">' + escapeHtml(parent.subject || '') + '</span>' +
                       '</div>' +
                   '</div>'
                 : '';
@@ -947,13 +967,17 @@ export function getScript(): string {
                       '<div class="modal-section-label">Child Issues <span class="children-count">' + children.length + '</span></div>' +
                       '<div class="issue-link-list">' +
                           children.map(function(child) {
-                              const statusClass = getStatusClassFromName(child.status.name);
+                              if (!child) return '';
+                              const childId = String(child.id);
+                              const childStatus = child.status ? child.status.name : 'Unknown';
+                              const statusClass = getStatusClassFromName(childStatus);
                               const trackerName = child.tracker ? child.tracker.name : '';
-                              return '<div class="issue-link-item" onclick="navigateToIssue(\\'' + child.id + '\\')">' +
+                              return '<div class="issue-link-item" onclick="navigateToIssue(\\'' + childId + '\\')">' +
                                   '<span class="child-tracker-badge">' + escapeHtml(trackerName) + '</span>' +
-                                  '<span class="issue-link-id">#' + child.id + '</span>' +
-                                  '<span class="issue-link-status ' + statusClass + '">' + escapeHtml(child.status.name) + '</span>' +
-                                  '<span class="issue-link-subject">' + escapeHtml(child.subject) + '</span>' +
+                                  '<span class="issue-link-id">#' + childId + '</span>' +
+                                  '<span class="issue-link-status ' + statusClass + '">' + escapeHtml(childStatus) + '</span>' +
+                                  '<span class="issue-link-subject">' + escapeHtml(child.subject || '') + '</span>' +
+                                  '<span class="nav-arrow-right">→</span>' +
                               '</div>';
                           }).join('') +
                       '</div>' +
@@ -1008,7 +1032,7 @@ export function getScript(): string {
                         '</div>' +
                     '</div>' +
                     '<div class="modal-actions">' +
-                        '<button class="btn" onclick="openInBrowser(\\'' + escapeHtml(issue.url) + '\\')">Open in Browser</button>' +
+                        '<button class="btn" onclick="openInBrowser(\\'' + escapeHtml(issueUrl) + '\\')">Open in Browser</button>' +
                     '</div>';
             }
         }

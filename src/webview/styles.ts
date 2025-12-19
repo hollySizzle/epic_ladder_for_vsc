@@ -2020,7 +2020,7 @@ export function getStyles(): string {
             font-size: 10px;
         }
 
-        /* Parent issue specific styling */
+        /* Parent issue specific styling - shows navigation upward */
         .modal-parent-issue .issue-link-item {
             background: var(--vscode-editorWidget-background);
             border: 1px solid var(--border-color);
@@ -2030,6 +2030,41 @@ export function getStyles(): string {
         .modal-parent-issue .issue-link-item:hover {
             background: var(--vscode-list-hoverBackground);
             border-color: var(--vscode-focusBorder);
+        }
+
+        /* Navigation arrows for hierarchy indication */
+        .nav-arrow-up,
+        .nav-arrow-right {
+            font-size: 14px;
+            opacity: 0.6;
+            flex-shrink: 0;
+        }
+
+        .nav-arrow-up {
+            color: var(--vscode-textLink-foreground);
+        }
+
+        .nav-arrow-right {
+            color: var(--vscode-descriptionForeground);
+            margin-left: auto;
+        }
+
+        .issue-link-item:hover .nav-arrow-up,
+        .issue-link-item:hover .nav-arrow-right {
+            opacity: 1;
+        }
+
+        /* Hierarchy path indicator */
+        .modal-parent-issue .modal-section-label::before {
+            content: "↑";
+            margin-right: 6px;
+            opacity: 0.7;
+        }
+
+        .modal-children-issues .modal-section-label::before {
+            content: "↓";
+            margin-right: 6px;
+            opacity: 0.7;
         }
 
         @container (max-width: 500px) {
