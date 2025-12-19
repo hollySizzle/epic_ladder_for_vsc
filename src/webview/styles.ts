@@ -798,7 +798,8 @@ export function getStyles(): string {
             }
 
             .filter-row {
-                flex-direction: column;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
                 gap: 8px;
             }
 
@@ -807,7 +808,7 @@ export function getStyles(): string {
             }
 
             .filter-actions {
-                flex: 1;
+                grid-column: span 2;
             }
 
             .btn-clear {

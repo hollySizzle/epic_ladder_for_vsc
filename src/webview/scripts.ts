@@ -419,11 +419,22 @@ export function getScript(): string {
 
                     // Check search text
                     if (searchText) {
-                        const subject = item.querySelector('.issue-subject');
-                        const id = item.querySelector('.issue-id');
-                        const text = (subject?.textContent || '') + ' ' + (id?.textContent || '');
-                        if (!text.toLowerCase().includes(searchLower)) {
-                            matches = false;
+                        // #で始まる場合はID検索モード
+                        if (searchText.startsWith('#')) {
+                            const searchId = searchText.slice(1);
+                            const idElem = item.querySelector('.issue-id');
+                            const issueId = (idElem?.textContent || '').replace('#', '');
+                            // ID前方一致
+                            if (!issueId.startsWith(searchId)) {
+                                matches = false;
+                            }
+                        } else {
+                            // 通常のテキスト検索（件名に含む）
+                            const subject = item.querySelector('.issue-subject');
+                            const subjectText = (subject?.textContent || '').toLowerCase();
+                            if (!subjectText.includes(searchLower)) {
+                                matches = false;
+                            }
                         }
                     }
 
