@@ -694,13 +694,19 @@ export function getScript(): string {
         // ========================================
         let currentDetailIssueId = null;
         const detailCache = {};
+        const issueHistoryStack = []; // 履歴スタック for 戻るボタン
 
         function toggleDetail(event, issueId) {
             event.stopPropagation();
             openDetailModal(issueId);
         }
 
-        function openDetailModal(issueId) {
+        function openDetailModal(issueId, addToHistory = true) {
+            // 履歴スタックに追加（戻るボタン用）
+            if (addToHistory && currentModalIssueId && currentModalIssueId !== issueId) {
+                issueHistoryStack.push(currentModalIssueId);
+            }
+
             currentDetailIssueId = issueId;
             currentModalIssueId = issueId;
             const modal = document.getElementById('commentsModal');
@@ -725,6 +731,19 @@ export function getScript(): string {
 
             // Add keyboard listener for Escape
             document.addEventListener('keydown', handleModalKeydown);
+        }
+
+        // 別のチケットに移動（モーダル内ナビゲーション）
+        function navigateToIssue(issueId) {
+            openDetailModal(issueId, true);
+        }
+
+        // 戻るボタン（履歴スタックから前のチケットに戻る）
+        function goBackInHistory() {
+            if (issueHistoryStack.length > 0) {
+                const previousIssueId = issueHistoryStack.pop();
+                openDetailModal(previousIssueId, false);
+            }
         }
 
         // Handle messages from extension
@@ -877,16 +896,24 @@ export function getScript(): string {
         function renderDetailModal(detail) {
             const issue = detail.issue;
             const journals = detail.journals || [];
+            const children = detail.children || [];
             const assignee = issue.assigned_to ? issue.assigned_to.name : 'Unassigned';
             const assigneeId = issue.assigned_to ? issue.assigned_to.id : '';
             const version = issue.fixed_version ? issue.fixed_version.name : 'None';
             const doneRatio = issue.done_ratio || 0;
             const currentStatus = issue.status.name;
+            const parent = issue.parent;
+            const tracker = issue.tracker ? issue.tracker.name : '';
 
-            // Update modal title
+            // Update modal title with back button
             const titleEl = document.querySelector('.modal-title');
             if (titleEl) {
-                titleEl.innerHTML = '<span class="modal-issue-id" onclick="openInBrowser(\\'' + escapeHtml(issue.url) + '\\')" title="Open in browser">#' + issue.id + '</span>' +
+                const backBtn = issueHistoryStack.length > 0
+                    ? '<button class="modal-back-btn" onclick="goBackInHistory()" title="Go back">←</button>'
+                    : '';
+                titleEl.innerHTML = backBtn +
+                    '<span class="modal-tracker-badge">' + escapeHtml(tracker) + '</span>' +
+                    '<span class="modal-issue-id" onclick="openInBrowser(\\'' + escapeHtml(issue.url) + '\\')" title="Open in browser">#' + issue.id + '</span>' +
                     '<span class="modal-copy-btn" onclick="copyModalIssueUrl(\\'' + escapeHtml(issue.url) + '\\', \\'' + issue.id + '\\')" title="Copy URL">Copy</span> ' +
                     '<span class="modal-subject">' + escapeHtml(issue.subject) + '</span>';
             }
@@ -902,6 +929,36 @@ export function getScript(): string {
                 const selected = m.id === assigneeId ? ' selected' : '';
                 return '<option value="' + escapeHtml(m.id) + '"' + selected + '>' + escapeHtml(m.name) + '</option>';
             }).join('');
+
+            // Build parent issue section
+            const parentHtml = parent
+                ? '<div class="modal-parent-issue">' +
+                      '<div class="modal-section-label">Parent Issue</div>' +
+                      '<div class="issue-link-item" onclick="navigateToIssue(\\'' + parent.id + '\\')">' +
+                          '<span class="issue-link-id">#' + parent.id + '</span>' +
+                          '<span class="issue-link-subject">' + escapeHtml(parent.subject) + '</span>' +
+                      '</div>' +
+                  '</div>'
+                : '';
+
+            // Build children issues section
+            const childrenHtml = children.length > 0
+                ? '<div class="modal-children-issues">' +
+                      '<div class="modal-section-label">Child Issues <span class="children-count">' + children.length + '</span></div>' +
+                      '<div class="issue-link-list">' +
+                          children.map(function(child) {
+                              const statusClass = getStatusClassFromName(child.status.name);
+                              const trackerName = child.tracker ? child.tracker.name : '';
+                              return '<div class="issue-link-item" onclick="navigateToIssue(\\'' + child.id + '\\')">' +
+                                  '<span class="child-tracker-badge">' + escapeHtml(trackerName) + '</span>' +
+                                  '<span class="issue-link-id">#' + child.id + '</span>' +
+                                  '<span class="issue-link-status ' + statusClass + '">' + escapeHtml(child.status.name) + '</span>' +
+                                  '<span class="issue-link-subject">' + escapeHtml(child.subject) + '</span>' +
+                              '</div>';
+                          }).join('') +
+                      '</div>' +
+                  '</div>'
+                : '';
 
             // Update modal body
             const bodyEl = document.getElementById('modalCommentsList');
@@ -935,10 +992,12 @@ export function getScript(): string {
                             '<span class="progress-text">' + doneRatio + '%</span>' +
                         '</div>' +
                     '</div>' +
+                    parentHtml +
                     '<div class="modal-description">' +
                         '<div class="modal-section-label">Description</div>' +
                         '<div class="modal-description-content">' + (issue.descriptionHtml || renderMarkdown(issue.description || '')) + '</div>' +
                     '</div>' +
+                    childrenHtml +
                     '<div class="modal-comments">' +
                         '<div class="modal-section-label">' +
                             'Comments & History ' +
@@ -1043,6 +1102,8 @@ export function getScript(): string {
                 modal.classList.remove('open');
             }
             currentModalIssueId = null;
+            // 履歴スタックをクリア
+            issueHistoryStack.length = 0;
             document.removeEventListener('keydown', handleModalKeydown);
         }
 

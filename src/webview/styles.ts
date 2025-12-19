@@ -1910,5 +1910,160 @@ export function getStyles(): string {
             opacity: 0.6;
             cursor: wait;
         }
+
+        /* ========================================
+           Modal Back Button & Tracker Badge
+           ======================================== */
+        .modal-back-btn {
+            background: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 4px 10px;
+            font-size: 14px;
+            cursor: pointer;
+            flex-shrink: 0;
+            margin-right: 8px;
+            transition: all 0.15s;
+        }
+
+        .modal-back-btn:hover {
+            background: var(--vscode-button-secondaryHoverBackground);
+            border-color: var(--vscode-focusBorder);
+        }
+
+        .modal-tracker-badge {
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+            flex-shrink: 0;
+            background: var(--vscode-badge-background);
+            color: var(--vscode-badge-foreground);
+        }
+
+        /* ========================================
+           Parent & Children Issue Styles
+           ======================================== */
+        .modal-parent-issue,
+        .modal-children-issues {
+            margin-bottom: 16px;
+        }
+
+        .issue-link-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--vscode-editorWidget-background);
+        }
+
+        .issue-link-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: background 0.15s;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .issue-link-item:last-child {
+            border-bottom: none;
+        }
+
+        .issue-link-item:hover {
+            background: var(--vscode-list-hoverBackground);
+        }
+
+        .issue-link-id {
+            font-family: monospace;
+            font-size: 12px;
+            color: var(--vscode-textLink-foreground);
+            flex-shrink: 0;
+            font-weight: 600;
+        }
+
+        .issue-link-subject {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 13px;
+        }
+
+        .issue-link-status {
+            font-size: 9px;
+            padding: 1px 5px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .child-tracker-badge {
+            font-size: 9px;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-weight: 500;
+            flex-shrink: 0;
+            background: var(--vscode-badge-background);
+            color: var(--vscode-badge-foreground);
+        }
+
+        .children-count {
+            background: var(--vscode-badge-background);
+            color: var(--vscode-badge-foreground);
+            padding: 1px 6px;
+            border-radius: 10px;
+            font-size: 10px;
+        }
+
+        /* Parent issue specific styling */
+        .modal-parent-issue .issue-link-item {
+            background: var(--vscode-editorWidget-background);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+        }
+
+        .modal-parent-issue .issue-link-item:hover {
+            background: var(--vscode-list-hoverBackground);
+            border-color: var(--vscode-focusBorder);
+        }
+
+        @container (max-width: 500px) {
+            .modal-back-btn {
+                padding: 3px 8px;
+                font-size: 12px;
+            }
+
+            .modal-tracker-badge {
+                font-size: 8px;
+                padding: 1px 4px;
+            }
+
+            .issue-link-item {
+                padding: 6px 10px;
+                gap: 6px;
+            }
+
+            .issue-link-id {
+                font-size: 11px;
+            }
+
+            .issue-link-subject {
+                font-size: 12px;
+            }
+
+            .child-tracker-badge {
+                font-size: 8px;
+                padding: 1px 4px;
+            }
+
+            .issue-link-status {
+                font-size: 8px;
+            }
+        }
     `;
 }
