@@ -560,6 +560,116 @@ export function getStyles(): string {
             animation: spin 0.6s linear infinite;
         }
 
+        /* Assignee Dropdown Styles */
+        .assignee-dropdown {
+            position: relative;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .assignee-badge {
+            font-size: 10px;
+            padding: 1px 5px;
+            border-radius: 4px;
+            flex-shrink: 0;
+            background: var(--vscode-badge-background);
+            color: var(--vscode-badge-foreground);
+            max-width: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .assignee-clickable {
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            transition: opacity 0.15s;
+        }
+
+        .assignee-clickable:hover {
+            opacity: 0.85;
+        }
+
+        .assignee-dropdown-arrow {
+            font-size: 6px;
+            opacity: 0.7;
+        }
+
+        .assignee-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 1000;
+            min-width: 150px;
+            max-width: 200px;
+            background: var(--vscode-dropdown-background);
+            border: 1px solid var(--vscode-dropdown-border);
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            margin-top: 2px;
+        }
+
+        .assignee-dropdown-menu.open {
+            display: block;
+        }
+
+        .assignee-search-container {
+            padding: 6px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .assignee-search-input {
+            width: 100%;
+            padding: 4px 8px;
+            background: var(--input-bg);
+            color: var(--text-color);
+            border: 1px solid var(--input-border);
+            border-radius: 3px;
+            font-size: 11px;
+        }
+
+        .assignee-search-input:focus {
+            outline: 1px solid var(--vscode-focusBorder);
+        }
+
+        .assignee-options-container {
+            max-height: 180px;
+            overflow-y: auto;
+        }
+
+        .assignee-option {
+            padding: 6px 10px;
+            font-size: 11px;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .assignee-option:hover {
+            background: var(--vscode-list-hoverBackground);
+        }
+
+        .assignee-updating {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .assignee-updating::after {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            margin-left: 4px;
+            border: 1px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
         .issue-id {
             font-family: monospace;
             font-size: 13px;
@@ -780,8 +890,12 @@ export function getStyles(): string {
                 order: 5;
             }
 
-            .meta-info {
+            .assignee-dropdown {
                 order: 6;
+            }
+
+            .meta-info {
+                order: 7;
                 flex-basis: 100%;
                 margin-top: 2px;
             }
@@ -1762,6 +1876,31 @@ export function getStyles(): string {
             margin-top: 16px;
             padding-top: 12px;
             border-top: 1px solid var(--border-color);
+        }
+
+        /* Modal Select Styles */
+        .modal-select {
+            background: var(--input-bg);
+            color: var(--text-color);
+            border: 1px solid var(--input-border);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            min-width: 100px;
+        }
+
+        .modal-select:focus {
+            outline: 1px solid var(--vscode-focusBorder);
+        }
+
+        .modal-select:hover:not(:disabled) {
+            background: var(--hover-bg);
+        }
+
+        .modal-select-updating {
+            opacity: 0.6;
+            cursor: wait;
         }
     `;
 }

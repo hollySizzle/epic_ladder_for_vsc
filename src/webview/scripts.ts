@@ -197,7 +197,92 @@ export function getScript(): string {
                 currentOpenStatusMenu.classList.remove('open');
                 currentOpenStatusMenu = null;
             }
+            if (currentOpenAssigneeMenu && !event.target.closest('.assignee-dropdown')) {
+                currentOpenAssigneeMenu.classList.remove('open');
+                currentOpenAssigneeMenu = null;
+            }
         });
+
+        // ========================================
+        // Assignee Dropdown Functions
+        // ========================================
+        let currentOpenAssigneeMenu = null;
+
+        function toggleAssigneeDropdown(event, issueId) {
+            event.stopPropagation();
+
+            const menu = document.getElementById('assigneeMenu-' + issueId);
+            if (!menu) return;
+
+            // Close any other open menu
+            if (currentOpenAssigneeMenu && currentOpenAssigneeMenu !== menu) {
+                currentOpenAssigneeMenu.classList.remove('open');
+            }
+            if (currentOpenStatusMenu) {
+                currentOpenStatusMenu.classList.remove('open');
+                currentOpenStatusMenu = null;
+            }
+
+            // Toggle current menu
+            const isOpen = menu.classList.toggle('open');
+            currentOpenAssigneeMenu = isOpen ? menu : null;
+
+            // Reset search and focus
+            if (isOpen) {
+                const searchInput = menu.querySelector('.assignee-search-input');
+                if (searchInput) {
+                    searchInput.value = '';
+                    searchInput.focus();
+                    filterAssigneeOptions(searchInput, issueId);
+                }
+
+                // Add click handlers to options
+                menu.querySelectorAll('.assignee-option').forEach(option => {
+                    option.onclick = function(e) {
+                        e.stopPropagation();
+                        const assigneeId = this.getAttribute('data-assignee-id');
+                        const assigneeName = this.getAttribute('data-assignee-name');
+                        updateAssignee(issueId, assigneeId, assigneeName);
+                        menu.classList.remove('open');
+                        currentOpenAssigneeMenu = null;
+                    };
+                });
+            }
+        }
+
+        function filterAssigneeOptions(input, issueId) {
+            const menu = document.getElementById('assigneeMenu-' + issueId);
+            if (!menu) return;
+
+            const searchText = input.value.toLowerCase();
+            const options = menu.querySelectorAll('.assignee-option');
+
+            options.forEach(option => {
+                const name = option.getAttribute('data-assignee-name').toLowerCase();
+                if (name.includes(searchText)) {
+                    option.style.display = '';
+                } else {
+                    option.style.display = 'none';
+                }
+            });
+        }
+
+        function updateAssignee(issueId, assigneeId, assigneeName) {
+            // Find the assignee badge and show loading state
+            const dropdown = document.querySelector('.assignee-dropdown[data-issue-id="' + issueId + '"]');
+            const badge = dropdown?.querySelector('.assignee-badge');
+
+            if (badge) {
+                badge.classList.add('assignee-updating');
+            }
+
+            vscode.postMessage({
+                command: 'updateAssignee',
+                issueId: issueId,
+                assigneeId: assigneeId,
+                assigneeName: assigneeName
+            });
+        }
 
         function toggleCollapse(header) {
             const item = header.closest('.tree-item');
@@ -611,6 +696,10 @@ export function getScript(): string {
                 onStatusUpdateSuccess(message.issueId, message.newStatus);
             } else if (message.command === 'statusUpdateError') {
                 onStatusUpdateError(message.issueId, message.error);
+            } else if (message.command === 'assigneeUpdateSuccess') {
+                onAssigneeUpdateSuccess(message.issueId, message.newAssignee, message.newAssigneeId);
+            } else if (message.command === 'assigneeUpdateError') {
+                onAssigneeUpdateError(message.issueId, message.error);
             } else if (message.command === 'copyIssueUrlReady') {
                 copyToClipboard(message.url, message.issueId);
             }
@@ -631,6 +720,14 @@ export function getScript(): string {
                 badge.className = 'status-badge status-clickable ' + getStatusClassFromName(newStatus);
             }
 
+            // Update modal select if open
+            const modalStatusSelect = document.getElementById('modalStatusSelect');
+            if (modalStatusSelect && currentModalIssueId === issueId) {
+                modalStatusSelect.disabled = false;
+                modalStatusSelect.classList.remove('modal-select-updating');
+                modalStatusSelect.value = newStatus;
+            }
+
             // Clear detail cache for this issue
             delete detailCache[issueId];
         }
@@ -643,8 +740,64 @@ export function getScript(): string {
                 badge.classList.remove('status-updating');
             }
 
+            // Update modal select if open
+            const modalStatusSelect = document.getElementById('modalStatusSelect');
+            if (modalStatusSelect && currentModalIssueId === issueId) {
+                modalStatusSelect.disabled = false;
+                modalStatusSelect.classList.remove('modal-select-updating');
+            }
+
             // Show error notification
             alert('Failed to update status: ' + errorMessage);
+        }
+
+        function onAssigneeUpdateSuccess(issueId, newAssignee, newAssigneeId) {
+            const dropdown = document.querySelector('.assignee-dropdown[data-issue-id="' + issueId + '"]');
+            const badge = dropdown?.querySelector('.assignee-badge');
+
+            if (badge) {
+                badge.classList.remove('assignee-updating');
+
+                // Update badge text (keep the arrow)
+                const displayName = newAssignee || 'Unassigned';
+                const arrow = badge.querySelector('.assignee-dropdown-arrow');
+                badge.innerHTML = '@' + escapeHtml(displayName) + (arrow ? arrow.outerHTML : '<span class="assignee-dropdown-arrow">▼</span>');
+            }
+
+            // Update dropdown data attribute
+            if (dropdown) {
+                dropdown.setAttribute('data-current-assignee-id', newAssigneeId || '');
+            }
+
+            // Update modal select if open
+            const modalAssigneeSelect = document.getElementById('modalAssigneeSelect');
+            if (modalAssigneeSelect && currentModalIssueId === issueId) {
+                modalAssigneeSelect.disabled = false;
+                modalAssigneeSelect.classList.remove('modal-select-updating');
+                modalAssigneeSelect.value = newAssigneeId || '';
+            }
+
+            // Clear detail cache for this issue
+            delete detailCache[issueId];
+        }
+
+        function onAssigneeUpdateError(issueId, errorMessage) {
+            const dropdown = document.querySelector('.assignee-dropdown[data-issue-id="' + issueId + '"]');
+            const badge = dropdown?.querySelector('.assignee-badge');
+
+            if (badge) {
+                badge.classList.remove('assignee-updating');
+            }
+
+            // Update modal select if open
+            const modalAssigneeSelect = document.getElementById('modalAssigneeSelect');
+            if (modalAssigneeSelect && currentModalIssueId === issueId) {
+                modalAssigneeSelect.disabled = false;
+                modalAssigneeSelect.classList.remove('modal-select-updating');
+            }
+
+            // Show error notification
+            alert('Failed to update assignee: ' + errorMessage);
         }
 
         function getStatusClassFromName(statusName) {
@@ -668,8 +821,10 @@ export function getScript(): string {
             const issue = detail.issue;
             const journals = detail.journals || [];
             const assignee = issue.assigned_to ? issue.assigned_to.name : 'Unassigned';
+            const assigneeId = issue.assigned_to ? issue.assigned_to.id : '';
             const version = issue.fixed_version ? issue.fixed_version.name : 'None';
             const doneRatio = issue.done_ratio || 0;
+            const currentStatus = issue.status.name;
 
             // Update modal title
             const titleEl = document.querySelector('.modal-title');
@@ -679,6 +834,18 @@ export function getScript(): string {
                     '<span class="modal-subject">' + escapeHtml(issue.subject) + '</span>';
             }
 
+            // Build status dropdown options
+            const statusOptions = (typeof globalStatuses !== 'undefined' ? globalStatuses : []).map(function(s) {
+                const selected = s === currentStatus ? ' selected' : '';
+                return '<option value="' + escapeHtml(s) + '"' + selected + '>' + escapeHtml(s) + '</option>';
+            }).join('');
+
+            // Build assignee dropdown options
+            const memberOptions = (typeof globalMembers !== 'undefined' ? globalMembers : []).map(function(m) {
+                const selected = m.id === assigneeId ? ' selected' : '';
+                return '<option value="' + escapeHtml(m.id) + '"' + selected + '>' + escapeHtml(m.name) + '</option>';
+            }).join('');
+
             // Update modal body
             const bodyEl = document.getElementById('modalCommentsList');
             if (bodyEl) {
@@ -687,11 +854,16 @@ export function getScript(): string {
                         '<div class="modal-detail-row">' +
                             '<div class="modal-detail-item">' +
                                 '<span class="modal-detail-label">Status:</span>' +
-                                '<span class="modal-detail-value">' + escapeHtml(issue.status.name) + '</span>' +
+                                '<select class="modal-select modal-status-select" id="modalStatusSelect" onchange="onModalStatusChange(this)">' +
+                                    statusOptions +
+                                '</select>' +
                             '</div>' +
                             '<div class="modal-detail-item">' +
                                 '<span class="modal-detail-label">Assignee:</span>' +
-                                '<span class="modal-detail-value">' + escapeHtml(assignee) + '</span>' +
+                                '<select class="modal-select modal-assignee-select" id="modalAssigneeSelect" onchange="onModalAssigneeChange(this)">' +
+                                    '<option value="">Unassigned</option>' +
+                                    memberOptions +
+                                '</select>' +
                             '</div>' +
                             '<div class="modal-detail-item">' +
                                 '<span class="modal-detail-label">Version:</span>' +
@@ -723,6 +895,38 @@ export function getScript(): string {
                         '<button class="btn" onclick="openInBrowser(\\'' + escapeHtml(issue.url) + '\\')">Open in Browser</button>' +
                     '</div>';
             }
+        }
+
+        function onModalStatusChange(selectEl) {
+            if (!currentModalIssueId) return;
+            const newStatus = selectEl.value;
+
+            // Show loading state
+            selectEl.disabled = true;
+            selectEl.classList.add('modal-select-updating');
+
+            vscode.postMessage({
+                command: 'updateStatus',
+                issueId: currentModalIssueId,
+                statusName: newStatus
+            });
+        }
+
+        function onModalAssigneeChange(selectEl) {
+            if (!currentModalIssueId) return;
+            const newAssigneeId = selectEl.value;
+            const newAssigneeName = selectEl.options[selectEl.selectedIndex].text;
+
+            // Show loading state
+            selectEl.disabled = true;
+            selectEl.classList.add('modal-select-updating');
+
+            vscode.postMessage({
+                command: 'updateAssignee',
+                issueId: currentModalIssueId,
+                assigneeId: newAssigneeId,
+                assigneeName: newAssigneeName
+            });
         }
 
         function renderChangeDetail(detail) {

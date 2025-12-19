@@ -216,6 +216,14 @@ export interface UpdateIssueStatusResponse {
     message: string;
 }
 
+export interface UpdateIssueAssigneeResponse {
+    success: boolean;
+    issue_id: string;
+    old_assignee: string | null;
+    new_assignee: string | null;
+    message: string;
+}
+
 // ステータス一覧
 export interface RedmineStatusItem {
     id: string;

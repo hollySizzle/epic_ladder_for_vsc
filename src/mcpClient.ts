@@ -9,6 +9,7 @@ import {
     GetIssueDetailResponse,
     AddIssueCommentResponse,
     UpdateIssueStatusResponse,
+    UpdateIssueAssigneeResponse,
     ListStatusesResponse,
     ListProjectMembersResponse
 } from './types';
@@ -157,6 +158,22 @@ export class McpClient {
                 issue_id: issueId,
                 status_name: statusName,
                 confirmed: confirmed
+            }
+        );
+    }
+
+    /**
+     * チケットの担当者を更新
+     */
+    async updateIssueAssignee(
+        issueId: string,
+        assignedToId: string | null
+    ): Promise<UpdateIssueAssigneeResponse> {
+        return this.callTool<UpdateIssueAssigneeResponse>(
+            'update_issue_assignee_tool',
+            {
+                issue_id: issueId,
+                assigned_to_id: assignedToId
             }
         );
     }

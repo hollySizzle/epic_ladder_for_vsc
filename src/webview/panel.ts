@@ -195,6 +195,30 @@ export class EpicLadderWebviewProvider {
                     }
                 }
                 break;
+            case 'updateAssignee':
+                if (typeof message.issueId === 'string' && this.mcpClient) {
+                    try {
+                        const assigneeId = message.assigneeId === '' ? null : message.assigneeId as string;
+                        const result = await this.mcpClient.updateIssueAssignee(
+                            message.issueId,
+                            assigneeId
+                        );
+                        this.panel?.webview.postMessage({
+                            command: 'assigneeUpdateSuccess',
+                            issueId: message.issueId,
+                            newAssignee: result.new_assignee,
+                            newAssigneeId: message.assigneeId
+                        });
+                    } catch (error) {
+                        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                        this.panel?.webview.postMessage({
+                            command: 'assigneeUpdateError',
+                            issueId: message.issueId,
+                            error: errorMessage
+                        });
+                    }
+                }
+                break;
         }
     }
 
@@ -396,7 +420,7 @@ export class EpicLadderWebviewProvider {
 
         <div class="scrollable-content">
             <div class="tree-container" id="treeContainer">
-                ${renderEpics(structure.structure, statusTypes)}
+                ${renderEpics(structure.structure, statusTypes, assignees)}
             </div>
         </div>
     </div>
@@ -429,6 +453,10 @@ export class EpicLadderWebviewProvider {
     </div>
 
     <script nonce="${nonce}">
+        // Global data for modal dropdowns
+        const globalMembers = ${JSON.stringify(assignees)};
+        const globalStatuses = ${JSON.stringify(statusTypes)};
+
         ${getScript()}
     </script>
 </body>

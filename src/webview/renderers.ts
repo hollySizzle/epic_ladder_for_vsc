@@ -22,7 +22,7 @@ export interface AssigneeInfo {
 /**
  * Render all epics as HTML tree
  */
-export function renderEpics(epics: ProjectStructureEpic[], statusOptions: string[]): string {
+export function renderEpics(epics: ProjectStructureEpic[], statusOptions: string[], members: AssigneeInfo[] = []): string {
     if (!epics || epics.length === 0) {
         return '<div class="empty-state">No epics found</div>';
     }
@@ -38,7 +38,7 @@ export function renderEpics(epics: ProjectStructureEpic[], statusOptions: string
                 <span class="issue-subject">${escapeHtml(epic.subject)}</span>
             </div>
             <div class="tree-children">
-                ${renderFeatures(epic.features, statusOptions)}
+                ${renderFeatures(epic.features, statusOptions, members)}
             </div>
         </div>
     `).join('');
@@ -47,7 +47,7 @@ export function renderEpics(epics: ProjectStructureEpic[], statusOptions: string
 /**
  * Render features as HTML tree
  */
-export function renderFeatures(features: ProjectStructureEpic['features'], statusOptions: string[]): string {
+export function renderFeatures(features: ProjectStructureEpic['features'], statusOptions: string[], members: AssigneeInfo[] = []): string {
     if (!features || features.length === 0) {
         return '';
     }
@@ -63,7 +63,7 @@ export function renderFeatures(features: ProjectStructureEpic['features'], statu
                 <span class="issue-subject">${escapeHtml(feature.subject)}</span>
             </div>
             <div class="tree-children">
-                ${renderUserStories(feature.user_stories, statusOptions)}
+                ${renderUserStories(feature.user_stories, statusOptions, members)}
             </div>
         </div>
     `).join('');
@@ -72,7 +72,7 @@ export function renderFeatures(features: ProjectStructureEpic['features'], statu
 /**
  * Render user stories as HTML tree
  */
-export function renderUserStories(stories: ProjectStructureEpic['features'][0]['user_stories'], statusOptions: string[]): string {
+export function renderUserStories(stories: ProjectStructureEpic['features'][0]['user_stories'], statusOptions: string[], members: AssigneeInfo[] = []): string {
     if (!stories || stories.length === 0) {
         return '';
     }
@@ -84,12 +84,7 @@ export function renderUserStories(stories: ProjectStructureEpic['features'][0]['
             story.children.tests.length > 0
         );
 
-        const metaInfo = (story.assigned_to || story.version) ? `
-            <div class="meta-info">
-                ${story.assigned_to ? `<span class="assignee">@${escapeHtml(story.assigned_to.name)}</span>` : ''}
-                ${story.version ? `<span class="version">${escapeHtml(story.version.name)}</span>` : ''}
-            </div>
-        ` : '';
+        const versionInfo = story.version ? `<span class="version">${escapeHtml(story.version.name)}</span>` : '';
 
         return `
             <div class="tree-item tree-item-story" data-id="${story.id}">
@@ -97,14 +92,15 @@ export function renderUserStories(stories: ProjectStructureEpic['features'][0]['
                     ${hasChildren ? `<span class="collapse-icon" onclick="event.stopPropagation(); toggleCollapse(this.parentElement)">&#9662;</span>` : '<span class="collapse-icon-placeholder"></span>'}
                     <span class="type-badge badge-story">Story</span>
                     ${renderStatusBadge(story.id, story.status, statusOptions)}
+                    ${renderAssigneeBadge(story.id, story.assigned_to, members)}
                     <span class="issue-id" onclick="event.stopPropagation(); openIssueInBrowser('${story.id}')">#${story.id}</span>
                     <span class="copy-url-btn" onclick="event.stopPropagation(); copyIssueUrl('${story.id}')" title="Copy URL">Copy</span>
                     <span class="issue-subject">${escapeHtml(story.subject)}</span>
-                    ${metaInfo}
+                    ${versionInfo ? `<div class="meta-info">${versionInfo}</div>` : ''}
                 </div>
                 ${hasChildren ? `
                     <div class="tree-children">
-                        ${renderChildren(story.children!, statusOptions)}
+                        ${renderChildren(story.children!, statusOptions, members)}
                     </div>
                 ` : ''}
             </div>
@@ -115,19 +111,19 @@ export function renderUserStories(stories: ProjectStructureEpic['features'][0]['
 /**
  * Render children (tasks, bugs, tests) as HTML
  */
-export function renderChildren(children: NonNullable<ProjectStructureEpic['features'][0]['user_stories'][0]['children']>, statusOptions: string[]): string {
+export function renderChildren(children: NonNullable<ProjectStructureEpic['features'][0]['user_stories'][0]['children']>, statusOptions: string[], members: AssigneeInfo[] = []): string {
     const items: string[] = [];
 
     children.tasks.forEach(task => {
-        items.push(renderLeafItem(task, 'Task', 'badge-task', statusOptions));
+        items.push(renderLeafItem(task, 'Task', 'badge-task', statusOptions, members));
     });
 
     children.bugs.forEach(bug => {
-        items.push(renderLeafItem(bug, 'Bug', 'badge-bug', statusOptions));
+        items.push(renderLeafItem(bug, 'Bug', 'badge-bug', statusOptions, members));
     });
 
     children.tests.forEach(test => {
-        items.push(renderLeafItem(test, 'Test', 'badge-test', statusOptions));
+        items.push(renderLeafItem(test, 'Test', 'badge-test', statusOptions, members));
     });
 
     return items.join('');
@@ -137,27 +133,22 @@ export function renderChildren(children: NonNullable<ProjectStructureEpic['featu
  * Render a leaf item (task, bug, or test)
  */
 export function renderLeafItem(
-    item: { id: string; subject: string; status: { name: string; is_closed: boolean }; assigned_to?: { name: string } },
+    item: { id: string; subject: string; status: { name: string; is_closed: boolean }; assigned_to?: { id: string; name: string } },
     type: string,
     badgeClass: string,
-    statusOptions: string[]
+    statusOptions: string[],
+    members: AssigneeInfo[] = []
 ): string {
-    const metaInfo = item.assigned_to ? `
-        <div class="meta-info">
-            <span class="assignee">@${escapeHtml(item.assigned_to.name)}</span>
-        </div>
-    ` : '';
-
     return `
         <div class="tree-item tree-item-leaf" data-id="${item.id}">
             <div class="tree-item-header no-children" onclick="toggleDetail(event, '${item.id}')">
                 <span class="collapse-icon-placeholder"></span>
                 <span class="type-badge ${badgeClass}">${type}</span>
                 ${renderStatusBadge(item.id, item.status, statusOptions)}
+                ${renderAssigneeBadge(item.id, item.assigned_to, members)}
                 <span class="issue-id" onclick="event.stopPropagation(); openIssueInBrowser('${item.id}')">#${item.id}</span>
                 <span class="copy-url-btn" onclick="event.stopPropagation(); copyIssueUrl('${item.id}')" title="Copy URL">Copy</span>
                 <span class="issue-subject">${escapeHtml(item.subject)}</span>
-                ${metaInfo}
             </div>
         </div>
     `;
@@ -200,6 +191,45 @@ export function renderStatusBadge(issueId: string, status: { name: string; is_cl
             </span>
             <div class="status-dropdown-menu" id="statusMenu-${issueId}">
                 ${optionsHtml}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Render an assignee badge with dropdown
+ */
+export function renderAssigneeBadge(
+    issueId: string,
+    assignedTo: { id: string; name: string } | undefined,
+    members: AssigneeInfo[]
+): string {
+    const assigneeName = assignedTo?.name ?? 'Unassigned';
+    const assigneeId = assignedTo?.id ?? '';
+
+    const optionsHtml = [
+        `<div class="assignee-option" data-assignee-id="" data-assignee-name="Unassigned">Unassigned</div>`,
+        ...members.map(m =>
+            `<div class="assignee-option" data-assignee-id="${escapeHtml(m.id)}" data-assignee-name="${escapeHtml(m.name)}">${escapeHtml(m.name)}</div>`
+        )
+    ].join('');
+
+    return `
+        <div class="assignee-dropdown" data-issue-id="${issueId}" data-current-assignee-id="${escapeHtml(assigneeId)}">
+            <span class="assignee-badge assignee-clickable"
+                  onclick="event.stopPropagation(); toggleAssigneeDropdown(event, '${issueId}')">
+                @${escapeHtml(assigneeName)}
+                <span class="assignee-dropdown-arrow">▼</span>
+            </span>
+            <div class="assignee-dropdown-menu" id="assigneeMenu-${issueId}">
+                <div class="assignee-search-container">
+                    <input type="text" class="assignee-search-input" placeholder="Search..."
+                           onclick="event.stopPropagation()"
+                           oninput="filterAssigneeOptions(this, '${issueId}')">
+                </div>
+                <div class="assignee-options-container">
+                    ${optionsHtml}
+                </div>
             </div>
         </div>
     `;
