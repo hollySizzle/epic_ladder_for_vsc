@@ -891,6 +891,7 @@ export function getScript(): string {
         }
 
         function getStatusClassFromName(statusName) {
+            if (!statusName) return 'status-open';
             const name = statusName.toLowerCase();
             if (name.includes('close') || name.includes('クローズ') || name.includes('完了')) {
                 return 'status-closed';
