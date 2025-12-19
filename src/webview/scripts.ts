@@ -950,35 +950,41 @@ export function getScript(): string {
                 return '<option value="' + escapeHtml(m.id) + '"' + selected + '>' + escapeHtml(m.name) + '</option>';
             }).join('');
 
-            // Build parent issue section
-            const parentHtml = parent && parent.id
-                ? '<div class="modal-parent-issue">' +
-                      '<div class="modal-section-label">Parent Issue</div>' +
-                      '<div class="issue-link-item" onclick="navigateToIssue(\\'' + String(parent.id) + '\\')">' +
-                          '<span class="nav-arrow-up">↑</span>' +
-                          '<span class="issue-link-id">#' + String(parent.id) + '</span>' +
-                          '<span class="issue-link-subject">' + escapeHtml(parent.subject || '') + '</span>' +
-                      '</div>' +
-                  '</div>'
-                : '';
-
-            // Build children issues section
-            const childrenHtml = children.length > 0
-                ? '<div class="modal-children-issues">' +
-                      '<div class="modal-section-label">Child Issues <span class="children-count">' + children.length + '</span></div>' +
-                      '<div class="issue-link-list">' +
-                          children.map(function(child) {
+            // Build unified hierarchy section (parent → current → children)
+            const hasHierarchy = (parent && parent.id) || children.length > 0;
+            const hierarchyHtml = hasHierarchy
+                ? '<div class="modal-hierarchy">' +
+                      '<div class="modal-section-label">Hierarchy</div>' +
+                      '<div class="hierarchy-tree">' +
+                          // Parent (if exists)
+                          (parent && parent.id
+                              ? '<div class="hierarchy-item hierarchy-parent" onclick="navigateToIssue(\\'' + String(parent.id) + '\\')">' +
+                                    '<span class="hierarchy-indent"></span>' +
+                                    '<span class="hierarchy-icon">↑</span>' +
+                                    '<span class="hierarchy-id">#' + String(parent.id) + '</span>' +
+                                    '<span class="hierarchy-subject">' + escapeHtml(parent.subject || '') + '</span>' +
+                                '</div>'
+                              : '') +
+                          // Current issue (always shown in hierarchy)
+                          '<div class="hierarchy-item hierarchy-current">' +
+                              '<span class="hierarchy-indent">' + (parent && parent.id ? '└' : '') + '</span>' +
+                              '<span class="hierarchy-icon">●</span>' +
+                              '<span class="hierarchy-id">#' + issueId + '</span>' +
+                              '<span class="hierarchy-subject">' + escapeHtml(issue.subject || '') + '</span>' +
+                          '</div>' +
+                          // Children (if exist)
+                          children.map(function(child, index) {
                               if (!child) return '';
                               const childId = String(child.id);
                               const childStatus = child.status ? child.status.name : 'Unknown';
                               const statusClass = getStatusClassFromName(childStatus);
-                              const trackerName = child.tracker ? child.tracker.name : '';
-                              return '<div class="issue-link-item" onclick="navigateToIssue(\\'' + childId + '\\')">' +
-                                  '<span class="child-tracker-badge">' + escapeHtml(trackerName) + '</span>' +
-                                  '<span class="issue-link-id">#' + childId + '</span>' +
-                                  '<span class="issue-link-status ' + statusClass + '">' + escapeHtml(childStatus) + '</span>' +
-                                  '<span class="issue-link-subject">' + escapeHtml(child.subject || '') + '</span>' +
-                                  '<span class="nav-arrow-right">→</span>' +
+                              const isLast = index === children.length - 1;
+                              return '<div class="hierarchy-item hierarchy-child" onclick="navigateToIssue(\\'' + childId + '\\')">' +
+                                  '<span class="hierarchy-indent">' + (isLast ? '└' : '├') + '</span>' +
+                                  '<span class="hierarchy-icon">→</span>' +
+                                  '<span class="hierarchy-id">#' + childId + '</span>' +
+                                  '<span class="hierarchy-status ' + statusClass + '">' + escapeHtml(childStatus) + '</span>' +
+                                  '<span class="hierarchy-subject">' + escapeHtml(child.subject || '') + '</span>' +
                               '</div>';
                           }).join('') +
                       '</div>' +
@@ -1017,12 +1023,11 @@ export function getScript(): string {
                             '<span class="progress-text">' + doneRatio + '%</span>' +
                         '</div>' +
                     '</div>' +
-                    parentHtml +
+                    hierarchyHtml +
                     '<div class="modal-description">' +
                         '<div class="modal-section-label">Description</div>' +
                         '<div class="modal-description-content">' + (issue.descriptionHtml || renderMarkdown(issue.description || '')) + '</div>' +
                     '</div>' +
-                    childrenHtml +
                     '<div class="modal-comments">' +
                         '<div class="modal-section-label">' +
                             'Comments & History ' +

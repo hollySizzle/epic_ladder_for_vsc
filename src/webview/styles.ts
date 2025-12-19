@@ -1943,128 +1943,94 @@ export function getStyles(): string {
         }
 
         /* ========================================
-           Parent & Children Issue Styles
+           Unified Hierarchy Display
            ======================================== */
-        .modal-parent-issue,
-        .modal-children-issues {
-            margin-bottom: 16px;
+        .modal-hierarchy {
+            margin-bottom: 12px;
         }
 
-        .issue-link-list {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            max-height: 200px;
-            overflow-y: auto;
+        .hierarchy-tree {
             border: 1px solid var(--border-color);
             border-radius: 6px;
             background: var(--vscode-editorWidget-background);
+            overflow: hidden;
         }
 
-        .issue-link-item {
+        .hierarchy-item {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            cursor: pointer;
-            transition: background 0.15s;
+            gap: 6px;
+            padding: 6px 10px;
+            font-size: 12px;
             border-bottom: 1px solid var(--border-color);
         }
 
-        .issue-link-item:last-child {
+        .hierarchy-item:last-child {
             border-bottom: none;
         }
 
-        .issue-link-item:hover {
+        .hierarchy-parent,
+        .hierarchy-child {
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .hierarchy-parent:hover,
+        .hierarchy-child:hover {
             background: var(--vscode-list-hoverBackground);
         }
 
-        .issue-link-id {
-            font-family: monospace;
-            font-size: 12px;
-            color: var(--vscode-textLink-foreground);
-            flex-shrink: 0;
-            font-weight: 600;
+        .hierarchy-current {
+            background: var(--vscode-list-activeSelectionBackground);
+            font-weight: 500;
         }
 
-        .issue-link-subject {
+        .hierarchy-indent {
+            width: 14px;
+            flex-shrink: 0;
+            font-family: monospace;
+            color: var(--vscode-descriptionForeground);
+            opacity: 0.6;
+        }
+
+        .hierarchy-icon {
+            width: 14px;
+            flex-shrink: 0;
+            text-align: center;
+            font-size: 10px;
+        }
+
+        .hierarchy-parent .hierarchy-icon {
+            color: var(--vscode-textLink-foreground);
+        }
+
+        .hierarchy-current .hierarchy-icon {
+            color: var(--vscode-textLink-activeForeground, var(--vscode-textLink-foreground));
+        }
+
+        .hierarchy-child .hierarchy-icon {
+            color: var(--vscode-descriptionForeground);
+        }
+
+        .hierarchy-id {
+            font-family: monospace;
+            font-size: 11px;
+            color: var(--vscode-textLink-foreground);
+            flex-shrink: 0;
+        }
+
+        .hierarchy-subject {
             flex: 1;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            font-size: 13px;
         }
 
-        .issue-link-status {
+        .hierarchy-status {
             font-size: 9px;
             padding: 1px 5px;
             border-radius: 4px;
             flex-shrink: 0;
-        }
-
-        .child-tracker-badge {
-            font-size: 9px;
-            padding: 2px 5px;
-            border-radius: 4px;
-            font-weight: 500;
-            flex-shrink: 0;
-            background: var(--vscode-badge-background);
-            color: var(--vscode-badge-foreground);
-        }
-
-        .children-count {
-            background: var(--vscode-badge-background);
-            color: var(--vscode-badge-foreground);
-            padding: 1px 6px;
-            border-radius: 10px;
-            font-size: 10px;
-        }
-
-        /* Parent issue specific styling - shows navigation upward */
-        .modal-parent-issue .issue-link-item {
-            background: var(--vscode-editorWidget-background);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-        }
-
-        .modal-parent-issue .issue-link-item:hover {
-            background: var(--vscode-list-hoverBackground);
-            border-color: var(--vscode-focusBorder);
-        }
-
-        /* Navigation arrows for hierarchy indication */
-        .nav-arrow-up,
-        .nav-arrow-right {
-            font-size: 14px;
-            opacity: 0.6;
-            flex-shrink: 0;
-        }
-
-        .nav-arrow-up {
-            color: var(--vscode-textLink-foreground);
-        }
-
-        .nav-arrow-right {
-            color: var(--vscode-descriptionForeground);
-            margin-left: auto;
-        }
-
-        .issue-link-item:hover .nav-arrow-up,
-        .issue-link-item:hover .nav-arrow-right {
-            opacity: 1;
-        }
-
-        /* Hierarchy path indicator */
-        .modal-parent-issue .modal-section-label::before {
-            content: "↑";
-            margin-right: 6px;
-            opacity: 0.7;
-        }
-
-        .modal-children-issues .modal-section-label::before {
-            content: "↓";
-            margin-right: 6px;
-            opacity: 0.7;
         }
 
         @container (max-width: 500px) {
@@ -2078,26 +2044,25 @@ export function getStyles(): string {
                 padding: 1px 4px;
             }
 
-            .issue-link-item {
-                padding: 6px 10px;
-                gap: 6px;
-            }
-
-            .issue-link-id {
+            .hierarchy-item {
+                padding: 5px 8px;
+                gap: 4px;
                 font-size: 11px;
             }
 
-            .issue-link-subject {
-                font-size: 12px;
+            .hierarchy-indent,
+            .hierarchy-icon {
+                width: 12px;
+                font-size: 9px;
             }
 
-            .child-tracker-badge {
+            .hierarchy-id {
+                font-size: 10px;
+            }
+
+            .hierarchy-status {
                 font-size: 8px;
                 padding: 1px 4px;
-            }
-
-            .issue-link-status {
-                font-size: 8px;
             }
         }
     `;
