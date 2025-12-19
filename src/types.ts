@@ -216,6 +216,48 @@ export interface UpdateIssueStatusResponse {
     message: string;
 }
 
+// ステータス一覧
+export interface RedmineStatusItem {
+    id: string;
+    name: string;
+    is_closed: boolean;
+    position: number;
+    description: string | null;
+}
+
+export interface ListStatusesResponse {
+    success: boolean;
+    statuses: RedmineStatusItem[];
+    total_count: number;
+    source: string;
+}
+
+// プロジェクトメンバー一覧
+export interface RedmineRole {
+    id: string;
+    name: string;
+}
+
+export interface RedmineMember {
+    user_id: string;
+    login: string;
+    name: string;
+    mail: string;
+    roles: RedmineRole[];
+    is_active: boolean;
+}
+
+export interface ListProjectMembersResponse {
+    success: boolean;
+    project: {
+        id: string;
+        identifier: string;
+        name: string;
+    };
+    members: RedmineMember[];
+    total_count: number;
+}
+
 // MCP Client Configuration
 export interface McpClientConfig {
     serverUrl: string;

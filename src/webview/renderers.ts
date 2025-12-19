@@ -22,7 +22,7 @@ export interface AssigneeInfo {
 /**
  * Render all epics as HTML tree
  */
-export function renderEpics(epics: ProjectStructureEpic[]): string {
+export function renderEpics(epics: ProjectStructureEpic[], statusOptions: string[]): string {
     if (!epics || epics.length === 0) {
         return '<div class="empty-state">No epics found</div>';
     }
@@ -32,13 +32,13 @@ export function renderEpics(epics: ProjectStructureEpic[]): string {
             <div class="tree-item-header" onclick="toggleDetail(event, '${epic.id}')">
                 <span class="collapse-icon" onclick="event.stopPropagation(); toggleCollapse(this.parentElement)">&#9662;</span>
                 <span class="type-badge badge-epic">Epic</span>
-                ${renderStatusBadge(epic.id, epic.status)}
+                ${renderStatusBadge(epic.id, epic.status, statusOptions)}
                 <span class="issue-id" onclick="event.stopPropagation(); openIssueInBrowser('${epic.id}')">#${epic.id}</span>
                 <span class="copy-url-btn" onclick="event.stopPropagation(); copyIssueUrl('${epic.id}')" title="Copy URL">Copy</span>
                 <span class="issue-subject">${escapeHtml(epic.subject)}</span>
             </div>
             <div class="tree-children">
-                ${renderFeatures(epic.features)}
+                ${renderFeatures(epic.features, statusOptions)}
             </div>
         </div>
     `).join('');
@@ -47,7 +47,7 @@ export function renderEpics(epics: ProjectStructureEpic[]): string {
 /**
  * Render features as HTML tree
  */
-export function renderFeatures(features: ProjectStructureEpic['features']): string {
+export function renderFeatures(features: ProjectStructureEpic['features'], statusOptions: string[]): string {
     if (!features || features.length === 0) {
         return '';
     }
@@ -57,13 +57,13 @@ export function renderFeatures(features: ProjectStructureEpic['features']): stri
             <div class="tree-item-header" onclick="toggleDetail(event, '${feature.id}')">
                 <span class="collapse-icon" onclick="event.stopPropagation(); toggleCollapse(this.parentElement)">&#9662;</span>
                 <span class="type-badge badge-feature">Feature</span>
-                ${renderStatusBadge(feature.id, feature.status)}
+                ${renderStatusBadge(feature.id, feature.status, statusOptions)}
                 <span class="issue-id" onclick="event.stopPropagation(); openIssueInBrowser('${feature.id}')">#${feature.id}</span>
                 <span class="copy-url-btn" onclick="event.stopPropagation(); copyIssueUrl('${feature.id}')" title="Copy URL">Copy</span>
                 <span class="issue-subject">${escapeHtml(feature.subject)}</span>
             </div>
             <div class="tree-children">
-                ${renderUserStories(feature.user_stories)}
+                ${renderUserStories(feature.user_stories, statusOptions)}
             </div>
         </div>
     `).join('');
@@ -72,7 +72,7 @@ export function renderFeatures(features: ProjectStructureEpic['features']): stri
 /**
  * Render user stories as HTML tree
  */
-export function renderUserStories(stories: ProjectStructureEpic['features'][0]['user_stories']): string {
+export function renderUserStories(stories: ProjectStructureEpic['features'][0]['user_stories'], statusOptions: string[]): string {
     if (!stories || stories.length === 0) {
         return '';
     }
@@ -96,7 +96,7 @@ export function renderUserStories(stories: ProjectStructureEpic['features'][0]['
                 <div class="tree-item-header ${hasChildren ? '' : 'no-children'}" onclick="toggleDetail(event, '${story.id}')">
                     ${hasChildren ? `<span class="collapse-icon" onclick="event.stopPropagation(); toggleCollapse(this.parentElement)">&#9662;</span>` : '<span class="collapse-icon-placeholder"></span>'}
                     <span class="type-badge badge-story">Story</span>
-                    ${renderStatusBadge(story.id, story.status)}
+                    ${renderStatusBadge(story.id, story.status, statusOptions)}
                     <span class="issue-id" onclick="event.stopPropagation(); openIssueInBrowser('${story.id}')">#${story.id}</span>
                     <span class="copy-url-btn" onclick="event.stopPropagation(); copyIssueUrl('${story.id}')" title="Copy URL">Copy</span>
                     <span class="issue-subject">${escapeHtml(story.subject)}</span>
@@ -104,7 +104,7 @@ export function renderUserStories(stories: ProjectStructureEpic['features'][0]['
                 </div>
                 ${hasChildren ? `
                     <div class="tree-children">
-                        ${renderChildren(story.children!)}
+                        ${renderChildren(story.children!, statusOptions)}
                     </div>
                 ` : ''}
             </div>
@@ -115,19 +115,19 @@ export function renderUserStories(stories: ProjectStructureEpic['features'][0]['
 /**
  * Render children (tasks, bugs, tests) as HTML
  */
-export function renderChildren(children: NonNullable<ProjectStructureEpic['features'][0]['user_stories'][0]['children']>): string {
+export function renderChildren(children: NonNullable<ProjectStructureEpic['features'][0]['user_stories'][0]['children']>, statusOptions: string[]): string {
     const items: string[] = [];
 
     children.tasks.forEach(task => {
-        items.push(renderLeafItem(task, 'Task', 'badge-task'));
+        items.push(renderLeafItem(task, 'Task', 'badge-task', statusOptions));
     });
 
     children.bugs.forEach(bug => {
-        items.push(renderLeafItem(bug, 'Bug', 'badge-bug'));
+        items.push(renderLeafItem(bug, 'Bug', 'badge-bug', statusOptions));
     });
 
     children.tests.forEach(test => {
-        items.push(renderLeafItem(test, 'Test', 'badge-test'));
+        items.push(renderLeafItem(test, 'Test', 'badge-test', statusOptions));
     });
 
     return items.join('');
@@ -139,7 +139,8 @@ export function renderChildren(children: NonNullable<ProjectStructureEpic['featu
 export function renderLeafItem(
     item: { id: string; subject: string; status: { name: string; is_closed: boolean }; assigned_to?: { name: string } },
     type: string,
-    badgeClass: string
+    badgeClass: string,
+    statusOptions: string[]
 ): string {
     const metaInfo = item.assigned_to ? `
         <div class="meta-info">
@@ -152,7 +153,7 @@ export function renderLeafItem(
             <div class="tree-item-header no-children" onclick="toggleDetail(event, '${item.id}')">
                 <span class="collapse-icon-placeholder"></span>
                 <span class="type-badge ${badgeClass}">${type}</span>
-                ${renderStatusBadge(item.id, item.status)}
+                ${renderStatusBadge(item.id, item.status, statusOptions)}
                 <span class="issue-id" onclick="event.stopPropagation(); openIssueInBrowser('${item.id}')">#${item.id}</span>
                 <span class="copy-url-btn" onclick="event.stopPropagation(); copyIssueUrl('${item.id}')" title="Copy URL">Copy</span>
                 <span class="issue-subject">${escapeHtml(item.subject)}</span>
@@ -185,8 +186,7 @@ export function getStatusClass(status: { name: string; is_closed: boolean }): st
 /**
  * Render a status badge with dropdown
  */
-export function renderStatusBadge(issueId: string, status: { name: string; is_closed: boolean }): string {
-    const statusOptions = ['未着手', '着手中', 'クローズ'];
+export function renderStatusBadge(issueId: string, status: { name: string; is_closed: boolean }, statusOptions: string[]): string {
     const optionsHtml = statusOptions.map(opt =>
         `<div class="status-option" data-status="${escapeHtml(opt)}">${escapeHtml(opt)}</div>`
     ).join('');

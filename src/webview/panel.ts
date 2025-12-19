@@ -6,7 +6,9 @@ import { McpClient } from '../mcpClient';
 import {
     GetProjectStructureResponse,
     ProjectStructureEpic,
-    RedmineVersion
+    RedmineVersion,
+    RedmineStatusItem,
+    RedmineMember
 } from '../types';
 import { getStyles } from './styles';
 import { getScript } from './scripts';
@@ -21,7 +23,6 @@ import {
 import {
     renderMarkdownToHtml,
     escapeHtml,
-    extractAssignees,
     countActiveFilters,
     getNonce
 } from './utils';
@@ -208,18 +209,22 @@ export class EpicLadderWebviewProvider {
         }
 
         try {
-            const [structureResponse, versionsResponse] = await Promise.all([
+            const [structureResponse, versionsResponse, statusesResponse, membersResponse] = await Promise.all([
                 this.mcpClient.getProjectStructure({
                     max_depth: 4,
                     include_closed: filterOptions?.includeClosed ?? false,
                     version_id: filterOptions?.versionId
                 }),
-                this.mcpClient.listVersions({ status: 'all' })
+                this.mcpClient.listVersions({ status: 'all' }),
+                this.mcpClient.listStatuses({ include_closed: true }),
+                this.mcpClient.listProjectMembers({})
             ]);
 
             this.panel.webview.html = this.getWebviewContent(
                 structureResponse,
                 versionsResponse.versions,
+                statusesResponse.statuses,
+                membersResponse.members,
                 filterOptions
             );
         } catch (error) {
@@ -231,14 +236,21 @@ export class EpicLadderWebviewProvider {
     private getWebviewContent(
         structure: GetProjectStructureResponse,
         versions: RedmineVersion[],
+        statuses: RedmineStatusItem[],
+        members: RedmineMember[],
         filterOptions?: FilterOptions
     ): string {
         const nonce = getNonce();
-        const assignees = extractAssignees(structure.structure);
+        // メンバー一覧をAssigneeInfo形式に変換
+        const assignees: AssigneeInfo[] = members.map(m => ({
+            id: m.user_id,
+            name: m.name
+        }));
         const trackerTypes = ['Epic', 'Feature', 'Story', 'Task', 'Bug', 'Test'];
-        const statusTypes = ['未着手', '着手中', 'クローズ'];
-        // デフォルト: 未着手と着手中を選択（Open Only相当）
-        const defaultStatuses = ['未着手', '着手中'];
+        // ステータス一覧を動的に取得
+        const statusTypes = statuses.map(s => s.name);
+        // デフォルト: クローズ以外を選択（Open Only相当）
+        const defaultStatuses = statuses.filter(s => !s.is_closed).map(s => s.name);
         const selectedStatuses = filterOptions?.selectedStatuses ?? defaultStatuses;
         const activeFilterCount = countActiveFilters(filterOptions, defaultStatuses);
 
@@ -384,7 +396,7 @@ export class EpicLadderWebviewProvider {
 
         <div class="scrollable-content">
             <div class="tree-container" id="treeContainer">
-                ${renderEpics(structure.structure)}
+                ${renderEpics(structure.structure, statusTypes)}
             </div>
         </div>
     </div>

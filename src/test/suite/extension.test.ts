@@ -6,7 +6,7 @@ suite('Extension Test Suite', () => {
     vscode.window.showInformationMessage('Starting extension tests.');
 
     test('Extension should be present', () => {
-        const ext = vscode.extensions.getExtension('your-publisher-name.redmine-epic-ladder');
+        const ext = vscode.extensions.getExtension('hollySizzle.redmine-epic-ladder');
         assert.ok(ext, 'Extension should be found');
     });
 

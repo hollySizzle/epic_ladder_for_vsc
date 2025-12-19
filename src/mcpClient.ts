@@ -8,7 +8,9 @@ import {
     ListVersionsResponse,
     GetIssueDetailResponse,
     AddIssueCommentResponse,
-    UpdateIssueStatusResponse
+    UpdateIssueStatusResponse,
+    ListStatusesResponse,
+    ListProjectMembersResponse
 } from './types';
 
 export class McpClient {
@@ -156,6 +158,33 @@ export class McpClient {
                 status_name: statusName,
                 confirmed: confirmed
             }
+        );
+    }
+
+    /**
+     * ステータス一覧を取得
+     */
+    async listStatuses(params: {
+        project_id?: string;
+        include_closed?: boolean;
+    } = {}): Promise<ListStatusesResponse> {
+        return this.callTool<ListStatusesResponse>(
+            'list_statuses_tool',
+            params
+        );
+    }
+
+    /**
+     * プロジェクトメンバー一覧を取得
+     */
+    async listProjectMembers(params: {
+        project_id?: string;
+        role_name?: string;
+        limit?: number;
+    } = {}): Promise<ListProjectMembersResponse> {
+        return this.callTool<ListProjectMembersResponse>(
+            'list_project_members_tool',
+            params
         );
     }
 

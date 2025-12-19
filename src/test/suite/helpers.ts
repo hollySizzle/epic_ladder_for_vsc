@@ -8,7 +8,7 @@ import * as vscode from 'vscode';
  * 拡張機能のアクティベーションを待機
  */
 export async function activateExtension(): Promise<vscode.Extension<unknown> | undefined> {
-    const ext = vscode.extensions.getExtension('your-publisher-name.redmine-epic-ladder');
+    const ext = vscode.extensions.getExtension('hollySizzle.redmine-epic-ladder');
     if (ext) {
         await ext.activate();
     }
