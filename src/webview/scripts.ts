@@ -139,6 +139,52 @@ export function getScript(): string {
                 focusSearchInput();
                 return;
             }
+
+            // Escape key - close UI elements in priority order
+            if (event.key === 'Escape') {
+                // 1. Modal is handled by its own handler (handleModalKeydown)
+                const modal = document.getElementById('commentsModal');
+                if (modal && modal.classList.contains('open')) {
+                    return; // Let modal handler deal with it
+                }
+
+                // 2. Close status filter dropdown
+                if (statusFilterMenuOpen) {
+                    closeStatusFilterDropdown();
+                    event.preventDefault();
+                    return;
+                }
+
+                // 3. Close status/assignee dropdowns
+                if (currentOpenStatusMenu) {
+                    currentOpenStatusMenu.classList.remove('open');
+                    currentOpenStatusMenu = null;
+                    event.preventDefault();
+                    return;
+                }
+                if (currentOpenAssigneeMenu) {
+                    currentOpenAssigneeMenu.classList.remove('open');
+                    currentOpenAssigneeMenu = null;
+                    event.preventDefault();
+                    return;
+                }
+
+                // 4. If typing, blur the input
+                if (isTyping) {
+                    activeElement.blur();
+                    event.preventDefault();
+                    return;
+                }
+
+                // 5. Close filters panel (narrow width)
+                const filtersPanel = document.getElementById('filtersPanel');
+                if (filtersPanel && !filtersPanel.classList.contains('collapsed')) {
+                    filtersPanel.classList.add('collapsed');
+                    filtersCollapsed = true;
+                    event.preventDefault();
+                    return;
+                }
+            }
         });
 
         // ========================================
