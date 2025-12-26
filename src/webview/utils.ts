@@ -1,7 +1,9 @@
 /**
  * Utility functions for the Epic Ladder webview
  */
+import * as crypto from 'crypto';
 import { marked } from 'marked';
+import sanitizeHtmlLib from 'sanitize-html';
 import { ProjectStructureEpic } from '../types';
 import { FilterOptions, AssigneeInfo } from './renderers';
 
@@ -13,23 +15,35 @@ marked.setOptions({
 
 /**
  * Sanitize HTML to prevent XSS attacks
- * Removes dangerous tags and attributes while preserving safe content
+ * Uses sanitize-html library for robust protection against XSS
  */
 export function sanitizeHtml(html: string): string {
-    // Remove script tags and their content
-    html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-    // Remove on* event handlers
-    html = html.replace(/\s+on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, '');
-    // Remove javascript: URLs
-    html = html.replace(/javascript:/gi, '');
-    // Remove iframe, object, embed, form tags
-    html = html.replace(/<(iframe|object|embed|form)\b[^>]*>[\s\S]*?<\/\1>/gi, '');
-    html = html.replace(/<(iframe|object|embed|form)\b[^>]*\/?>/gi, '');
-    // Remove style tags with potentially dangerous content
-    html = html.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
-    // Remove data: URLs (except for safe image types)
-    html = html.replace(/data:(?!image\/(png|jpeg|gif|webp))[^"'\s]*/gi, '');
-    return html;
+    return sanitizeHtmlLib(html, {
+        allowedTags: [
+            // Markdown commonly produces these tags
+            'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+            'p', 'br', 'hr',
+            'ul', 'ol', 'li',
+            'blockquote', 'pre', 'code',
+            'strong', 'b', 'em', 'i', 'u', 's', 'del',
+            'a', 'img',
+            'table', 'thead', 'tbody', 'tr', 'th', 'td',
+            'div', 'span'
+        ],
+        allowedAttributes: {
+            'a': ['href', 'title', 'target', 'rel'],
+            'img': ['src', 'alt', 'title', 'width', 'height'],
+            'th': ['align'],
+            'td': ['align'],
+            '*': ['class']
+        },
+        allowedSchemes: ['http', 'https', 'mailto'],
+        allowedSchemesByTag: {
+            img: ['http', 'https', 'data']
+        },
+        allowedSchemesAppliedToAttributes: ['href', 'src'],
+        disallowedTagsMode: 'discard'
+    });
 }
 
 /**
@@ -114,13 +128,9 @@ export function countActiveFilters(filterOptions?: FilterOptions, defaultStatuse
 }
 
 /**
- * Generate a random nonce for CSP
+ * Generate a cryptographically secure random nonce for CSP
+ * Uses Node.js crypto module for secure random generation
  */
 export function getNonce(): string {
-    let text = '';
-    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    for (let i = 0; i < 32; i++) {
-        text += possible.charAt(Math.floor(Math.random() * possible.length));
-    }
-    return text;
+    return crypto.randomBytes(24).toString('base64url');
 }
