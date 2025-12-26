@@ -486,7 +486,7 @@ export function getScript(): string {
 
                     // Check assignee
                     if (matches && assigneeId) {
-                        const assigneeElem = item.querySelector('.assignee');
+                        const assigneeElem = item.querySelector('.assignee-badge');
                         const itemAssignee = assigneeElem?.textContent || '';
                         // Get selected assignee name from dropdown
                         const assigneeSelect = document.getElementById('assigneeFilter');
@@ -505,11 +505,11 @@ export function getScript(): string {
                         }
                     }
 
-                    // Check status (マルチセレクト対応)
+                    // Check status (マルチセレクト対応・完全一致)
                     if (matches && selectedStatuses && selectedStatuses.length > 0) {
                         const statusBadge = item.querySelector('.status-badge');
                         const itemStatus = statusBadge?.textContent?.replace('▼', '').trim() || '';
-                        if (!selectedStatuses.some(status => itemStatus.includes(status))) {
+                        if (!selectedStatuses.some(status => itemStatus === status)) {
                             matches = false;
                         }
                     }
