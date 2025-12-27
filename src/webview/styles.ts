@@ -515,20 +515,22 @@ export function getStyles(): string {
         }
 
         .collapse-icon {
-            font-size: 10px;
+            font-size: 18px;
             transition: transform 0.2s;
-            width: 12px;
+            width: 18px;
             flex-shrink: 0;
             text-align: center;
+            cursor: pointer;
         }
 
         .collapse-icon-placeholder {
-            width: 12px;
+            width: 18px;
             flex-shrink: 0;
         }
 
         .tree-item.collapsed .collapse-icon {
             transform: rotate(-90deg);
+            opacity: 0.5;
         }
 
         .tree-item.collapsed > .tree-children {
