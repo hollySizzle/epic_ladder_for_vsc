@@ -156,6 +156,8 @@ export function renderLeafItem(
 
 /**
  * Get CSS class for status
+ * Note: クライアント側にも類似ロジック (scripts.ts の getStatusClassFromName) が存在します。
+ * ロジック変更時は両方を更新してください。
  */
 export function getStatusClass(status: { name: string; is_closed: boolean }): string {
     if (status.is_closed) {

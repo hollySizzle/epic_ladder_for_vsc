@@ -721,19 +721,6 @@ export function getStyles(): string {
             flex-shrink: 0;
         }
 
-        .assignee {
-            font-size: 10px;
-            opacity: 0.8;
-            background: var(--vscode-badge-background);
-            color: var(--vscode-badge-foreground);
-            padding: 1px 5px;
-            border-radius: 4px;
-            max-width: 80px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
         .version {
             font-size: 10px;
             opacity: 0.8;

@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__redmine_epic_grid__get_issue_detail_tool",
+      "mcp__redmine_epic_grid__update_issue_status_tool",
+      "Bash(npm run compile:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nrefactor: コード品質改善（技術的負債解消）\\(issue_3592\\)\n\n- mcpClient.tsのJSON.parseにエラーハンドリング追加 \\(#3593\\)\n- getStatusClassFromName関数の重複をコメントで明記 \\(#3594\\)\n- detailCacheにLRUキャッシュサイズ制限追加（メモリリーク対策）\\(#3595\\)\n- 未使用コード削除: extractAssignees関数, .assignee CSSクラス \\(#3596\\)\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "redmine_epic_grid"
+  ]
+}

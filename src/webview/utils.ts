@@ -4,8 +4,7 @@
 import * as crypto from 'crypto';
 import { marked } from 'marked';
 import sanitizeHtmlLib from 'sanitize-html';
-import { ProjectStructureEpic } from '../types';
-import { FilterOptions, AssigneeInfo } from './renderers';
+import { FilterOptions } from './renderers';
 
 // Configure marked for GFM (GitHub Flavored Markdown)
 marked.setOptions({
@@ -67,44 +66,6 @@ export function escapeHtml(text: string): string {
         "'": '&#039;'
     };
     return text.replace(/[&<>"']/g, m => map[m]);
-}
-
-/**
- * Extract unique assignees from project structure
- */
-export function extractAssignees(structure: ProjectStructureEpic[]): AssigneeInfo[] {
-    const assigneeMap = new Map<string, string>();
-
-    for (const epic of structure) {
-        for (const feature of epic.features || []) {
-            for (const story of feature.user_stories || []) {
-                if (story.assigned_to) {
-                    assigneeMap.set(story.assigned_to.id, story.assigned_to.name);
-                }
-                if (story.children) {
-                    for (const task of story.children.tasks || []) {
-                        if (task.assigned_to) {
-                            assigneeMap.set(task.assigned_to.id, task.assigned_to.name);
-                        }
-                    }
-                    for (const bug of story.children.bugs || []) {
-                        if (bug.assigned_to) {
-                            assigneeMap.set(bug.assigned_to.id, bug.assigned_to.name);
-                        }
-                    }
-                    for (const test of story.children.tests || []) {
-                        if (test.assigned_to) {
-                            assigneeMap.set(test.assigned_to.id, test.assigned_to.name);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    return Array.from(assigneeMap.entries())
-        .map(([id, name]) => ({ id, name }))
-        .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**

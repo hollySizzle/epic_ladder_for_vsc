@@ -84,7 +84,12 @@ export class McpClient {
             .map(c => c.text)
             .join('');
 
-        return JSON.parse(textContent) as T;
+        try {
+            return JSON.parse(textContent) as T;
+        } catch (e) {
+            const errorMessage = e instanceof Error ? e.message : 'Unknown parse error';
+            throw new McpError(-32700, `Failed to parse MCP response: ${errorMessage}`);
+        }
     }
 
     /**

@@ -26,7 +26,6 @@ export {
     sanitizeHtml,
     renderMarkdownToHtml,
     escapeHtml,
-    extractAssignees,
     countActiveFilters,
     getNonce
 } from './utils';

@@ -693,7 +693,19 @@ export function getScript(): string {
         // Issue Detail (Modal Display)
         // ========================================
         const detailCache = {};
+        const detailCacheOrder = []; // LRU順序管理
+        const DETAIL_CACHE_MAX_SIZE = 50; // キャッシュ最大サイズ
         const issueHistoryStack = []; // 履歴スタック for 戻るボタン
+
+        // キャッシュサイズ制限を超えた場合、古いエントリを削除
+        function pruneDetailCache() {
+            while (detailCacheOrder.length > DETAIL_CACHE_MAX_SIZE) {
+                const oldestId = detailCacheOrder.shift();
+                if (oldestId && detailCache[oldestId]) {
+                    delete detailCache[oldestId];
+                }
+            }
+        }
 
         function toggleDetail(event, issueId) {
             event.stopPropagation();
@@ -757,8 +769,14 @@ export function getScript(): string {
             const message = event.data;
 
             if (message.command === 'issueDetail') {
-                // Cache the result
+                // Cache the result with LRU management
+                const cacheIdx = detailCacheOrder.indexOf(message.issueId);
+                if (cacheIdx > -1) {
+                    detailCacheOrder.splice(cacheIdx, 1);
+                }
+                detailCacheOrder.push(message.issueId);
                 detailCache[message.issueId] = message.detail;
+                pruneDetailCache();
                 // Update modal if open
                 if (currentModalIssueId === message.issueId) {
                     try {
@@ -890,6 +908,8 @@ export function getScript(): string {
             alert('Failed to update assignee: ' + errorMessage);
         }
 
+        // Note: サーバー側にも類似ロジック (renderers.ts の getStatusClass) が存在します。
+        // ロジック変更時は両方を更新してください。
         function getStatusClassFromName(statusName) {
             if (!statusName) return 'status-open';
             const name = statusName.toLowerCase();
