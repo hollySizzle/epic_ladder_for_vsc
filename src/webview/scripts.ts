@@ -533,11 +533,11 @@ export function getScript(): string {
 
                     // Check search text
                     if (searchText) {
-                        // ID検索モード: #で始まる場合、または数字のみの場合
-                        const isIdSearch = searchText.startsWith('#') || /^\\d+$/.test(searchText);
+                        // ID検索モード: #で始まる場合のみ
+                        const isIdSearch = searchText.startsWith('#');
                         if (isIdSearch) {
                             // #を除去してID部分を取得
-                            const searchId = searchText.startsWith('#') ? searchText.slice(1) : searchText;
+                            const searchId = searchText.slice(1);
                             const idElem = item.querySelector('.issue-id');
                             const issueId = (idElem?.textContent || '').replace('#', '');
                             // ID前方一致

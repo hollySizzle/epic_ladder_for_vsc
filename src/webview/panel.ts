@@ -304,7 +304,7 @@ export class EpicLadderWebviewProvider {
             <!-- Unified filter bar for narrow width -->
             <div class="unified-filter-bar" id="unifiedFilterBar">
                 <input type="text" class="unified-search-input" id="unifiedSearchInput"
-                    placeholder="🔍 Search..."
+                    placeholder="🔍 検索 (#でID指定)"
                     value="${filterOptions?.searchText ?? ''}"
                     oninput="onUnifiedSearchInput(this.value)">
                 <button class="unified-filter-btn ${activeFilterCount > 0 ? 'active' : ''}" onclick="toggleFilters()" title="Filters">
@@ -331,7 +331,7 @@ export class EpicLadderWebviewProvider {
                 <div class="filter-row">
                     <div class="filter-group filter-group-search">
                         <label for="searchInput">Search</label>
-                        <input type="text" id="searchInput" placeholder="Search issues..."
+                        <input type="text" id="searchInput" placeholder="検索 (#でID指定)"
                             value="${filterOptions?.searchText ?? ''}"
                             oninput="debounceSearch(this.value)">
                     </div>
