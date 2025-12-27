@@ -43,6 +43,7 @@ suite('Filter Logic Test Suite', () => {
     let window: TestWindow;
 
     // Helper to create tree item HTML
+    // 注: 本番のHTML構造 (renderers.ts) を正確に再現すること
     function createTreeItem(options: {
         id: string;
         subject: string;
@@ -50,9 +51,10 @@ suite('Filter Logic Test Suite', () => {
         status: string;
         assignee?: string;
     }): string {
+        // 本番同様にドロップダウン矢印を含める (renderers.ts:221-224)
         const assigneeHtml = options.assignee
-            ? `<span class="assignee-badge">@${options.assignee}</span>`
-            : '<span class="assignee-badge">@Unassigned</span>';
+            ? `<span class="assignee-badge">@${options.assignee}<span class="assignee-dropdown-arrow">▼</span></span>`
+            : '<span class="assignee-badge">@Unassigned<span class="assignee-dropdown-arrow">▼</span></span>';
 
         return `
             <div class="tree-item" data-id="${options.id}">
