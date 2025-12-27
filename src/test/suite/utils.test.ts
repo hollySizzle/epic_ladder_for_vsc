@@ -184,9 +184,10 @@ suite('Utils Test Suite', () => {
             assert.strictEqual(result, 1);
         });
 
-        test('should count hideEmptyHierarchy', () => {
+        test('should not count hideEmptyHierarchy when true (default)', () => {
+            // hideEmptyHierarchy のデフォルトは true なので、true の場合はカウントしない
             const result = countActiveFilters({ hideEmptyHierarchy: true }, defaultStatuses);
-            assert.strictEqual(result, 1);
+            assert.strictEqual(result, 0);
         });
 
         test('should not count default statuses', () => {
@@ -206,6 +207,7 @@ suite('Utils Test Suite', () => {
         });
 
         test('should count multiple active filters', () => {
+            // hideEmptyHierarchy: true はデフォルトなのでカウントしない → 5つ
             const result = countActiveFilters(
                 {
                     searchText: 'test',
@@ -217,12 +219,13 @@ suite('Utils Test Suite', () => {
                 },
                 defaultStatuses
             );
-            assert.strictEqual(result, 6);
+            assert.strictEqual(result, 5);
         });
 
-        test('should handle hideEmptyHierarchy false', () => {
+        test('should count hideEmptyHierarchy when false (non-default)', () => {
+            // hideEmptyHierarchy: false はデフォルトから変更されているのでカウント
             const result = countActiveFilters({ hideEmptyHierarchy: false }, defaultStatuses);
-            assert.strictEqual(result, 0);
+            assert.strictEqual(result, 1);
         });
     });
 

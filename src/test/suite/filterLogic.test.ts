@@ -760,22 +760,23 @@ suite('Filter State and Refresh Test Suite', () => {
 
     suite('clearAllFilters', () => {
         test('should reset all filter controls', () => {
-            // Set all filters
+            // Set non-default filters
             (document.getElementById('versionFilter') as HTMLSelectElement).value = '97';
             (document.getElementById('assigneeFilter') as HTMLSelectElement).value = '1';
             (document.getElementById('trackerFilter') as HTMLSelectElement).value = 'Story';
             (document.getElementById('searchInput') as HTMLInputElement).value = 'query';
-            (document.getElementById('hideEmptyHierarchy') as HTMLInputElement).checked = true;
+            (document.getElementById('hideEmptyHierarchy') as HTMLInputElement).checked = false; // 非デフォルト
 
             // Clear all filters
             window.clearAllFilters();
 
-            // Verify all filters are reset
+            // Verify all filters are reset to default
             assert.strictEqual((document.getElementById('versionFilter') as HTMLSelectElement).value, '');
             assert.strictEqual((document.getElementById('assigneeFilter') as HTMLSelectElement).value, '');
             assert.strictEqual((document.getElementById('trackerFilter') as HTMLSelectElement).value, '');
             assert.strictEqual((document.getElementById('searchInput') as HTMLInputElement).value, '');
-            assert.strictEqual((document.getElementById('hideEmptyHierarchy') as HTMLInputElement).checked, false);
+            // hideEmptyHierarchy のデフォルトは true
+            assert.strictEqual((document.getElementById('hideEmptyHierarchy') as HTMLInputElement).checked, true);
         });
 
         test('should reset status checkboxes to default', () => {

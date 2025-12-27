@@ -414,7 +414,7 @@ export class EpicLadderWebviewProvider {
                     <div class="filter-group filter-checkbox">
                         <label class="inline-checkbox">
                             <input type="checkbox" id="hideEmptyHierarchy"
-                                ${filterOptions?.hideEmptyHierarchy ? 'checked' : ''}
+                                ${filterOptions?.hideEmptyHierarchy !== false ? 'checked' : ''}
                                 onchange="applyClientFilters()">
                             <span>${i18n.hideEmptyHierarchy}</span>
                         </label>

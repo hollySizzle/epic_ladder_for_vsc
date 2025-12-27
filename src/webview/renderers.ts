@@ -311,12 +311,8 @@ export function renderActiveFilterBadges(
             <span class="remove-filter" onclick="clearFilter('tracker')">×</span>
         </span>`);
     }
-    if (filterOptions.hideEmptyHierarchy) {
-        badges.push(`<span class="active-filter-badge" data-filter="hideEmpty">
-            ${hideEmptyLabel}
-            <span class="remove-filter" onclick="clearFilter('hideEmpty')">×</span>
-        </span>`);
-    }
+    // hideEmptyHierarchy はデフォルトがtrueなので、バッジ表示しない
+    // (デフォルト状態のためアクティブフィルタとしてカウントしない)
 
     return badges.join('');
 }

@@ -706,9 +706,9 @@ export function getScript(): string {
             // ステータスチェックボックスをデフォルト状態にリセット
             resetStatusFilterToDefault();
 
-            // 空の階層を非表示チェックボックスをリセット（デフォルトOFF）
+            // 空の階層を非表示チェックボックスをリセット（デフォルトON）
             const hideEmptyCheckbox = document.getElementById('hideEmptyHierarchy');
-            if (hideEmptyCheckbox) hideEmptyCheckbox.checked = false;
+            if (hideEmptyCheckbox) hideEmptyCheckbox.checked = true;
 
             // Reset all items
             const items = document.querySelectorAll('.tree-item');

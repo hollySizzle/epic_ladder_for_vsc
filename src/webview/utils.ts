@@ -84,7 +84,8 @@ export function countActiveFilters(filterOptions?: FilterOptions, defaultStatuse
     }
     if (filterOptions.assigneeId) count++;
     if (filterOptions.trackerType) count++;
-    if (filterOptions.hideEmptyHierarchy) count++;
+    // hideEmptyHierarchy はデフォルトがtrueなので、falseの場合のみカウント
+    if (filterOptions.hideEmptyHierarchy === false) count++;
     return count;
 }
 
