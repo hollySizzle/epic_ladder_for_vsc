@@ -2,10 +2,33 @@ import * as assert from 'assert';
 import { JSDOM, DOMWindow } from 'jsdom';
 import { getScript } from '../../webview/scripts';
 
+// Message type for postMessage calls
+interface VsCodeMessage {
+    command: string;
+    versionId?: string;
+    assigneeId?: string;
+    trackerType?: string;
+    searchText?: string;
+    selectedStatuses?: string[];
+    includeClosed?: boolean;
+    hideEmptyHierarchy?: boolean;
+}
+
 // Extended window type for test functions
 interface TestWindow extends DOMWindow {
     applyClientFilters: () => void;
-    acquireVsCodeApi: () => { postMessage: () => void };
+    getCurrentFilterState: () => {
+        versionId?: string;
+        assigneeId?: string;
+        trackerType?: string;
+        searchText?: string;
+        selectedStatuses?: string[];
+        includeClosed?: boolean;
+        hideEmptyHierarchy?: boolean;
+    };
+    refresh: () => void;
+    clearAllFilters: () => void;
+    acquireVsCodeApi: () => { postMessage: (msg: VsCodeMessage) => void };
 }
 
 /**
@@ -453,6 +476,283 @@ suite('Filter Logic Test Suite', () => {
             const assigneeBadge = item104?.querySelector('.assignee-badge');
 
             assert.ok(assigneeBadge?.textContent?.includes('Unassigned'), 'Bug Fix should show Unassigned');
+        });
+    });
+});
+
+/**
+ * Filter State and Refresh Tests
+ *
+ * These tests verify that filter state is correctly captured and
+ * preserved during refresh operations.
+ */
+suite('Filter State and Refresh Test Suite', () => {
+    let dom: JSDOM;
+    let document: Document;
+    let window: TestWindow;
+    let postMessageCalls: VsCodeMessage[];
+
+    // Helper to create filter controls HTML with version filter
+    function createFilterControlsWithVersion(): string {
+        return `
+            <input type="text" id="searchInput" value="">
+            <select id="versionFilter">
+                <option value="">All Versions</option>
+                <option value="96">Sprint 2025-W51</option>
+                <option value="97">Sprint 2025-W52</option>
+            </select>
+            <select id="assigneeFilter">
+                <option value="">All</option>
+                <option value="1">@Alice</option>
+                <option value="2">@Bob</option>
+            </select>
+            <select id="trackerFilter">
+                <option value="">All</option>
+                <option value="Epic">Epic</option>
+                <option value="Story">Story</option>
+            </select>
+            <input type="checkbox" id="hideEmptyHierarchy">
+            <div id="statusDropdown">
+                <input type="checkbox" name="statusFilter" value="未着手" checked>
+                <input type="checkbox" name="statusFilter" value="着手中" checked>
+                <input type="checkbox" name="statusFilter" value="クローズ">
+            </div>
+        `;
+    }
+
+    setup(() => {
+        postMessageCalls = [];
+
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head></head>
+            <body>
+                <div class="container">
+                    ${createFilterControlsWithVersion()}
+                    <div id="tree"></div>
+                </div>
+            </body>
+            </html>
+        `;
+
+        dom = new JSDOM(html, {
+            runScripts: 'dangerously',
+            url: 'http://localhost'
+        });
+        document = dom.window.document;
+        window = dom.window as unknown as TestWindow;
+
+        // Mock vscode API with call tracking
+        window.acquireVsCodeApi = () => ({
+            postMessage: (msg: VsCodeMessage) => {
+                postMessageCalls.push(msg);
+            }
+        });
+
+        // Execute the script
+        const script = getScript();
+        const scriptEl = document.createElement('script');
+        scriptEl.textContent = script;
+        document.body.appendChild(scriptEl);
+    });
+
+    teardown(() => {
+        dom.window.close();
+    });
+
+    suite('getCurrentFilterState', () => {
+        test('should return empty state when no filters set', () => {
+            const state = window.getCurrentFilterState();
+
+            assert.strictEqual(state.versionId, undefined, 'versionId should be undefined');
+            assert.strictEqual(state.assigneeId, undefined, 'assigneeId should be undefined');
+            assert.strictEqual(state.trackerType, undefined, 'trackerType should be undefined');
+            assert.strictEqual(state.searchText, undefined, 'searchText should be undefined');
+        });
+
+        test('should capture version filter', () => {
+            const versionFilter = document.getElementById('versionFilter') as HTMLSelectElement;
+            versionFilter.value = '96';
+
+            const state = window.getCurrentFilterState();
+
+            assert.strictEqual(state.versionId, '96', 'Should capture version ID');
+        });
+
+        test('should capture assignee filter', () => {
+            const assigneeFilter = document.getElementById('assigneeFilter') as HTMLSelectElement;
+            assigneeFilter.value = '1';
+
+            const state = window.getCurrentFilterState();
+
+            assert.strictEqual(state.assigneeId, '1', 'Should capture assignee ID');
+        });
+
+        test('should capture tracker filter', () => {
+            const trackerFilter = document.getElementById('trackerFilter') as HTMLSelectElement;
+            trackerFilter.value = 'Story';
+
+            const state = window.getCurrentFilterState();
+
+            assert.strictEqual(state.trackerType, 'Story', 'Should capture tracker type');
+        });
+
+        test('should capture search text', () => {
+            const searchInput = document.getElementById('searchInput') as HTMLInputElement;
+            searchInput.value = 'test query';
+
+            const state = window.getCurrentFilterState();
+
+            assert.strictEqual(state.searchText, 'test query', 'Should capture search text');
+        });
+
+        test('should capture status checkboxes', () => {
+            // Check only クローズ
+            const statusCheckboxes = document.querySelectorAll('input[name="statusFilter"]');
+            statusCheckboxes.forEach((cb) => {
+                const checkbox = cb as HTMLInputElement;
+                checkbox.checked = checkbox.value === 'クローズ';
+            });
+
+            const state = window.getCurrentFilterState();
+
+            assert.ok(state.selectedStatuses, 'Should have selectedStatuses');
+            assert.strictEqual(state.selectedStatuses!.length, 1, 'Should have 1 status');
+            assert.ok(state.selectedStatuses!.includes('クローズ'), 'Should include クローズ');
+            assert.strictEqual(state.includeClosed, true, 'includeClosed should be true');
+        });
+
+        test('should capture hideEmptyHierarchy', () => {
+            const hideEmptyCheckbox = document.getElementById('hideEmptyHierarchy') as HTMLInputElement;
+            hideEmptyCheckbox.checked = true;
+
+            const state = window.getCurrentFilterState();
+
+            assert.strictEqual(state.hideEmptyHierarchy, true, 'Should capture hideEmptyHierarchy');
+        });
+
+        test('should capture all filters together', () => {
+            // Set all filters
+            (document.getElementById('versionFilter') as HTMLSelectElement).value = '97';
+            (document.getElementById('assigneeFilter') as HTMLSelectElement).value = '2';
+            (document.getElementById('trackerFilter') as HTMLSelectElement).value = 'Epic';
+            (document.getElementById('searchInput') as HTMLInputElement).value = 'search term';
+            (document.getElementById('hideEmptyHierarchy') as HTMLInputElement).checked = true;
+
+            const statusCheckboxes = document.querySelectorAll('input[name="statusFilter"]');
+            statusCheckboxes.forEach((cb) => {
+                const checkbox = cb as HTMLInputElement;
+                checkbox.checked = checkbox.value === '着手中';
+            });
+
+            const state = window.getCurrentFilterState();
+
+            assert.strictEqual(state.versionId, '97', 'Version should be 97');
+            assert.strictEqual(state.assigneeId, '2', 'Assignee should be 2');
+            assert.strictEqual(state.trackerType, 'Epic', 'Tracker should be Epic');
+            assert.strictEqual(state.searchText, 'search term', 'Search should be captured');
+            assert.strictEqual(state.hideEmptyHierarchy, true, 'hideEmptyHierarchy should be true');
+            assert.ok(state.selectedStatuses!.includes('着手中'), 'Should include 着手中');
+        });
+    });
+
+    suite('refresh with filter state', () => {
+        test('should send refresh command with current filter state', () => {
+            // Set some filters
+            (document.getElementById('versionFilter') as HTMLSelectElement).value = '96';
+            (document.getElementById('searchInput') as HTMLInputElement).value = 'test';
+
+            // Call refresh
+            window.refresh();
+
+            // Verify postMessage was called
+            assert.strictEqual(postMessageCalls.length, 1, 'Should call postMessage once');
+            assert.strictEqual(postMessageCalls[0].command, 'refresh', 'Command should be refresh');
+            assert.strictEqual(postMessageCalls[0].versionId, '96', 'Should include versionId');
+            assert.strictEqual(postMessageCalls[0].searchText, 'test', 'Should include searchText');
+        });
+
+        test('should preserve all filter state on refresh', () => {
+            // Set all filters
+            (document.getElementById('versionFilter') as HTMLSelectElement).value = '97';
+            (document.getElementById('assigneeFilter') as HTMLSelectElement).value = '1';
+            (document.getElementById('trackerFilter') as HTMLSelectElement).value = 'Story';
+            (document.getElementById('searchInput') as HTMLInputElement).value = 'query';
+            (document.getElementById('hideEmptyHierarchy') as HTMLInputElement).checked = true;
+
+            const statusCheckboxes = document.querySelectorAll('input[name="statusFilter"]');
+            statusCheckboxes.forEach((cb) => {
+                const checkbox = cb as HTMLInputElement;
+                checkbox.checked = checkbox.value === 'クローズ';
+            });
+
+            // Call refresh
+            window.refresh();
+
+            // Verify all filter state is preserved
+            const msg = postMessageCalls[0];
+            assert.strictEqual(msg.command, 'refresh');
+            assert.strictEqual(msg.versionId, '97');
+            assert.strictEqual(msg.assigneeId, '1');
+            assert.strictEqual(msg.trackerType, 'Story');
+            assert.strictEqual(msg.searchText, 'query');
+            assert.strictEqual(msg.hideEmptyHierarchy, true);
+            assert.ok(msg.selectedStatuses!.includes('クローズ'));
+            assert.strictEqual(msg.includeClosed, true);
+        });
+
+        test('should send empty filter state when no filters set', () => {
+            // No filters set, just default
+            window.refresh();
+
+            const msg = postMessageCalls[0];
+            assert.strictEqual(msg.command, 'refresh');
+            // Default statuses should still be included
+            assert.ok(msg.selectedStatuses, 'Should include selectedStatuses');
+        });
+    });
+
+    suite('clearAllFilters', () => {
+        test('should reset all filter controls', () => {
+            // Set all filters
+            (document.getElementById('versionFilter') as HTMLSelectElement).value = '97';
+            (document.getElementById('assigneeFilter') as HTMLSelectElement).value = '1';
+            (document.getElementById('trackerFilter') as HTMLSelectElement).value = 'Story';
+            (document.getElementById('searchInput') as HTMLInputElement).value = 'query';
+            (document.getElementById('hideEmptyHierarchy') as HTMLInputElement).checked = true;
+
+            // Clear all filters
+            window.clearAllFilters();
+
+            // Verify all filters are reset
+            assert.strictEqual((document.getElementById('versionFilter') as HTMLSelectElement).value, '');
+            assert.strictEqual((document.getElementById('assigneeFilter') as HTMLSelectElement).value, '');
+            assert.strictEqual((document.getElementById('trackerFilter') as HTMLSelectElement).value, '');
+            assert.strictEqual((document.getElementById('searchInput') as HTMLInputElement).value, '');
+            assert.strictEqual((document.getElementById('hideEmptyHierarchy') as HTMLInputElement).checked, false);
+        });
+
+        test('should reset status checkboxes to default', () => {
+            // Set non-default status
+            const statusCheckboxes = document.querySelectorAll('input[name="statusFilter"]');
+            statusCheckboxes.forEach((cb) => {
+                const checkbox = cb as HTMLInputElement;
+                checkbox.checked = checkbox.value === 'クローズ';
+            });
+
+            // Clear all filters
+            window.clearAllFilters();
+
+            // Verify default statuses are checked
+            statusCheckboxes.forEach((cb) => {
+                const checkbox = cb as HTMLInputElement;
+                if (checkbox.value === '未着手' || checkbox.value === '着手中') {
+                    assert.strictEqual(checkbox.checked, true, `${checkbox.value} should be checked`);
+                } else {
+                    assert.strictEqual(checkbox.checked, false, `${checkbox.value} should not be checked`);
+                }
+            });
         });
     });
 });
