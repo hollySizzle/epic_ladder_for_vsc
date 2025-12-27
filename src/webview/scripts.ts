@@ -1138,12 +1138,20 @@ export function getScript(): string {
                           children.map(function(child, index) {
                               if (!child) return '';
                               const childId = String(child.id);
-                              const childStatus = child.status ? child.status.name : 'Unknown';
+                              // status can be string or object
+                              const childStatus = typeof child.status === 'string'
+                                  ? child.status
+                                  : (child.status ? child.status.name : 'Unknown');
+                              const isClosed = typeof child.status === 'string'
+                                  ? (child.status === 'クローズ' || child.status.toLowerCase() === 'closed')
+                                  : (child.status && child.status.is_closed);
                               const statusClass = getStatusClassFromName(childStatus);
+                              const closedClass = isClosed ? ' hierarchy-closed' : '';
+                              const childIcon = isClosed ? '✓' : '→';
                               const isLast = index === children.length - 1;
-                              return '<div class="hierarchy-item hierarchy-child" onclick="navigateToIssue(\\'' + childId + '\\')">' +
+                              return '<div class="hierarchy-item hierarchy-child' + closedClass + '" onclick="navigateToIssue(\\'' + childId + '\\')">' +
                                   '<span class="hierarchy-indent">' + (isLast ? '└' : '├') + '</span>' +
-                                  '<span class="hierarchy-icon">→</span>' +
+                                  '<span class="hierarchy-icon">' + childIcon + '</span>' +
                                   '<span class="hierarchy-id">#' + childId + '</span>' +
                                   '<span class="hierarchy-status ' + statusClass + '">' + escapeHtml(childStatus) + '</span>' +
                                   '<span class="hierarchy-subject">' + escapeHtml(child.subject || '') + '</span>' +

@@ -1900,8 +1900,6 @@ export function getStyles(): string {
             padding: 12px;
             border-radius: 6px;
             border: 1px solid var(--border-color);
-            max-height: 200px;
-            overflow-y: auto;
             font-size: 13px;
             line-height: 1.6;
         }
@@ -1965,8 +1963,6 @@ export function getStyles(): string {
         }
 
         .modal-comments-container {
-            max-height: 300px;
-            overflow-y: auto;
         }
 
         .modal-actions {
@@ -2120,6 +2116,15 @@ export function getStyles(): string {
             padding: 1px 5px;
             border-radius: 4px;
             flex-shrink: 0;
+        }
+
+        /* Closed issue styling in hierarchy */
+        .hierarchy-closed {
+            opacity: 0.5;
+        }
+
+        .hierarchy-closed .hierarchy-icon {
+            color: var(--vscode-testing-iconPassed, #4ec9b0);
         }
 
         @container (max-width: 500px) {
