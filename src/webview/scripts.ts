@@ -515,12 +515,12 @@ export function getScript(): string {
                     // Check assignee (完全一致で比較)
                     if (matches && assigneeId) {
                         const assigneeElem = item.querySelector('.assignee-badge');
-                        // textContentには矢印(▼)が含まれるため除去
-                        const itemAssignee = (assigneeElem?.textContent || '').replace('@', '').replace('▼', '').trim();
+                        // data属性から担当者名を取得（textContentのパース不要）
+                        const itemAssignee = assigneeElem?.getAttribute('data-assignee-name') || '';
                         // Get selected assignee name from dropdown
                         const assigneeSelect = document.getElementById('assigneeFilter');
-                        const selectedAssigneeName = (assigneeSelect?.options[assigneeSelect.selectedIndex]?.text || '').replace('@', '').trim();
-                        // 完全一致で比較（部分一致による誤マッチを防止）
+                        const selectedAssigneeName = (assigneeSelect?.options[assigneeSelect.selectedIndex]?.text || '').trim();
+                        // 完全一致で比較
                         if (itemAssignee !== selectedAssigneeName) {
                             matches = false;
                         }
@@ -538,7 +538,8 @@ export function getScript(): string {
                     // Check status (マルチセレクト対応・完全一致)
                     if (matches && selectedStatuses && selectedStatuses.length > 0) {
                         const statusBadge = item.querySelector('.status-badge');
-                        const itemStatus = statusBadge?.textContent?.replace('▼', '').trim() || '';
+                        // data属性からステータス名を取得（textContentのパース不要）
+                        const itemStatus = statusBadge?.getAttribute('data-status-name') || '';
                         if (!selectedStatuses.some(status => itemStatus === status)) {
                             matches = false;
                         }

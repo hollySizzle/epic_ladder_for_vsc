@@ -51,10 +51,12 @@ suite('Filter Logic Test Suite', () => {
         status: string;
         assignee?: string;
     }): string {
-        // 本番同様にドロップダウン矢印を含める (renderers.ts:221-224)
-        const assigneeHtml = options.assignee
-            ? `<span class="assignee-badge">@${options.assignee}<span class="assignee-dropdown-arrow">▼</span></span>`
-            : '<span class="assignee-badge">@Unassigned<span class="assignee-dropdown-arrow">▼</span></span>';
+        // 本番同様にdata属性とドロップダウン矢印を含める (renderers.ts:221-226)
+        const assigneeName = options.assignee || 'Unassigned';
+        const assigneeHtml = `<span class="assignee-badge" data-assignee-name="${assigneeName}">@${assigneeName}<span class="assignee-dropdown-arrow">▼</span></span>`;
+
+        // 本番同様にdata属性とドロップダウン矢印を含める (renderers.ts:188-194)
+        const statusHtml = `<span class="status-badge" data-status-name="${options.status}">${options.status}<span class="status-dropdown-arrow">▼</span></span>`;
 
         return `
             <div class="tree-item" data-id="${options.id}">
@@ -62,7 +64,7 @@ suite('Filter Logic Test Suite', () => {
                     <span class="issue-id">#${options.id}</span>
                     <span class="type-badge">${options.type}</span>
                     <span class="issue-subject">${options.subject}</span>
-                    <span class="status-badge">${options.status}</span>
+                    ${statusHtml}
                     ${assigneeHtml}
                 </div>
             </div>
@@ -70,16 +72,17 @@ suite('Filter Logic Test Suite', () => {
     }
 
     // Helper to create filter controls HTML
+    // 注: 本番のHTML構造 (panel.ts) を正確に再現すること
     function createFilterControls(): string {
         return `
             <input type="text" id="searchInput" value="">
             <select id="assigneeFilter">
-                <option value="">All</option>
-                <option value="1">@Alice</option>
-                <option value="2">@Bob</option>
+                <option value="">All Assignees</option>
+                <option value="1">Alice</option>
+                <option value="2">Bob</option>
             </select>
             <select id="trackerFilter">
-                <option value="">All</option>
+                <option value="">All Types</option>
                 <option value="Epic">Epic</option>
                 <option value="Story">Story</option>
                 <option value="Task">Task</option>
@@ -498,6 +501,7 @@ suite('Filter State and Refresh Test Suite', () => {
     let postMessageCalls: VsCodeMessage[];
 
     // Helper to create filter controls HTML with version filter
+    // 注: 本番のHTML構造 (panel.ts) を正確に再現すること
     function createFilterControlsWithVersion(): string {
         return `
             <input type="text" id="searchInput" value="">
@@ -507,12 +511,12 @@ suite('Filter State and Refresh Test Suite', () => {
                 <option value="97">Sprint 2025-W52</option>
             </select>
             <select id="assigneeFilter">
-                <option value="">All</option>
-                <option value="1">@Alice</option>
-                <option value="2">@Bob</option>
+                <option value="">All Assignees</option>
+                <option value="1">Alice</option>
+                <option value="2">Bob</option>
             </select>
             <select id="trackerFilter">
-                <option value="">All</option>
+                <option value="">All Types</option>
                 <option value="Epic">Epic</option>
                 <option value="Story">Story</option>
             </select>

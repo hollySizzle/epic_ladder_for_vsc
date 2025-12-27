@@ -187,6 +187,7 @@ export function renderStatusBadge(issueId: string, status: { name: string; is_cl
     return `
         <div class="status-dropdown" data-issue-id="${issueId}">
             <span class="status-badge status-clickable ${getStatusClass(status)}"
+                  data-status-name="${escapeHtml(status.name)}"
                   onclick="event.stopPropagation(); toggleStatusDropdown(event, '${issueId}')">
                 ${escapeHtml(status.name)}
                 <span class="status-dropdown-arrow">▼</span>
@@ -219,6 +220,7 @@ export function renderAssigneeBadge(
     return `
         <div class="assignee-dropdown" data-issue-id="${issueId}" data-current-assignee-id="${escapeHtml(assigneeId)}">
             <span class="assignee-badge assignee-clickable"
+                  data-assignee-name="${escapeHtml(assigneeName)}"
                   onclick="event.stopPropagation(); toggleAssigneeDropdown(event, '${issueId}')">
                 @${escapeHtml(assigneeName)}
                 <span class="assignee-dropdown-arrow">▼</span>
