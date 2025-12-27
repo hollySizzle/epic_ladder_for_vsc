@@ -8,6 +8,13 @@ export function getScript(): string {
         let filtersCollapsed = true;
 
         function refresh() {
+            // リロードボタンにスピンアニメーションを追加
+            const reloadBtns = document.querySelectorAll('.unified-reload-btn, .header-actions .btn-icon');
+            reloadBtns.forEach(btn => {
+                btn.classList.add('reload-spinning');
+                setTimeout(() => btn.classList.remove('reload-spinning'), 600);
+            });
+
             // フィルタ状態を保持してリフレッシュ
             const currentFilters = getCurrentFilterState();
             vscode.postMessage({ command: 'refresh', ...currentFilters });

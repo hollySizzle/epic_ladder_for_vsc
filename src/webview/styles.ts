@@ -203,6 +203,21 @@ export function getStyles(): string {
             background: var(--hover-bg);
         }
 
+        /* Reload animation */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .reload-spinning {
+            animation: spin 0.6s ease-in-out;
+        }
+
+        .btn-icon.reload-spinning .codicon,
+        .unified-reload-btn.reload-spinning {
+            animation: spin 0.6s ease-in-out;
+        }
+
         .filters {
             display: flex;
             flex-direction: column;
