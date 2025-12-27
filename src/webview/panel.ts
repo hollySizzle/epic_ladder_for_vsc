@@ -456,6 +456,8 @@ export class EpicLadderWebviewProvider {
         // Global data for modal dropdowns
         const globalMembers = ${JSON.stringify(assignees)};
         const globalStatuses = ${JSON.stringify(statusTypes)};
+        // デフォルトステータス（クローズ以外）- サーバーで動的生成
+        const globalDefaultStatuses = ${JSON.stringify(defaultStatuses)};
 
         ${getScript()}
     </script>

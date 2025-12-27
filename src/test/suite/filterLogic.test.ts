@@ -120,6 +120,9 @@ suite('Filter Logic Test Suite', () => {
             postMessage: () => { /* mock */ }
         });
 
+        // Mock globalDefaultStatuses (サーバーから渡されるデフォルトステータス)
+        (window as unknown as { globalDefaultStatuses: string[] }).globalDefaultStatuses = ['未着手', '着手中'];
+
         // Execute the script
         const script = getScript();
         const scriptEl = document.createElement('script');
@@ -549,6 +552,9 @@ suite('Filter State and Refresh Test Suite', () => {
                 postMessageCalls.push(msg);
             }
         });
+
+        // Mock globalDefaultStatuses (サーバーから渡されるデフォルトステータス)
+        (window as unknown as { globalDefaultStatuses: string[] }).globalDefaultStatuses = ['未着手', '着手中'];
 
         // Execute the script
         const script = getScript();

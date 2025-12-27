@@ -404,9 +404,21 @@ export function getScript(): string {
             }
         }
 
+        /**
+         * サーバーサイドフィルタ処理
+         * 責任範囲:
+         * - versionId: バージョンでのサーバーサイドフィルタリング
+         * - includeClosed: クローズ済みチケットを含めるかのAPI最適化フラグ
+         *   (サーバーから取得するデータ量を削減)
+         *
+         * 注: selectedStatuses は参考情報としてサーバーに渡すが、
+         *     実際のステータスフィルタリングはクライアント側(applyClientFilters)で行う
+         */
         function applyFilters() {
-            const versionId = document.getElementById('versionFilter').value;
-            const searchText = document.getElementById('searchInput').value;
+            const versionFilter = document.getElementById('versionFilter');
+            const searchInput = document.getElementById('searchInput');
+            const versionId = versionFilter?.value || '';
+            const searchText = searchInput?.value || '';
 
             // ステータスチェックボックスの値を取得
             const statusCheckboxes = document.querySelectorAll('input[name="statusFilter"]:checked');
@@ -422,11 +434,26 @@ export function getScript(): string {
             });
         }
 
+        /**
+         * クライアントサイドフィルタ処理
+         * 責任範囲:
+         * - searchText: テキスト検索（件名/ID前方一致）
+         * - assigneeId: 担当者フィルタ（完全一致）
+         * - trackerType: トラッカータイプフィルタ
+         * - selectedStatuses: ステータスフィルタ（マルチセレクト対応）
+         * - hideEmptyHierarchy: 空の階層を非表示
+         *
+         * 注: サーバーからのデータに対してDOM操作でフィルタリングを行う
+         */
         function applyClientFilters() {
-            const searchText = document.getElementById('searchInput').value;
-            const assigneeId = document.getElementById('assigneeFilter').value;
-            const trackerType = document.getElementById('trackerFilter').value;
+            const searchInput = document.getElementById('searchInput');
+            const assigneeFilter = document.getElementById('assigneeFilter');
+            const trackerFilter = document.getElementById('trackerFilter');
             const hideEmptyCheckbox = document.getElementById('hideEmptyHierarchy');
+
+            const searchText = searchInput?.value || '';
+            const assigneeId = assigneeFilter?.value || '';
+            const trackerType = trackerFilter?.value || '';
             const hideEmptyHierarchy = hideEmptyCheckbox?.checked || false;
 
             // ステータスチェックボックスの値を取得
@@ -446,7 +473,8 @@ export function getScript(): string {
         function filterByMultipleCriteria(searchText, assigneeId, trackerType, selectedStatuses, hideEmptyHierarchy) {
             const items = document.querySelectorAll('.tree-item');
             const searchLower = (searchText || '').toLowerCase();
-            const defaultStatuses = ['未着手', '着手中'];
+            // globalDefaultStatuses はサーバーから動的に渡される（panel.tsで埋め込み）
+            const defaultStatuses = (typeof globalDefaultStatuses !== 'undefined') ? globalDefaultStatuses : [];
             const hasStatusFilter = selectedStatuses &&
                 (selectedStatuses.length !== defaultStatuses.length ||
                  !defaultStatuses.every(s => selectedStatuses.includes(s)));
@@ -484,14 +512,15 @@ export function getScript(): string {
                         }
                     }
 
-                    // Check assignee
+                    // Check assignee (完全一致で比較)
                     if (matches && assigneeId) {
                         const assigneeElem = item.querySelector('.assignee-badge');
-                        const itemAssignee = assigneeElem?.textContent || '';
+                        const itemAssignee = (assigneeElem?.textContent || '').replace('@', '').trim();
                         // Get selected assignee name from dropdown
                         const assigneeSelect = document.getElementById('assigneeFilter');
-                        const selectedAssigneeName = assigneeSelect.options[assigneeSelect.selectedIndex]?.text || '';
-                        if (!itemAssignee.includes(selectedAssigneeName.replace('@', ''))) {
+                        const selectedAssigneeName = (assigneeSelect?.options[assigneeSelect.selectedIndex]?.text || '').replace('@', '').trim();
+                        // 完全一致で比較（部分一致による誤マッチを防止）
+                        if (itemAssignee !== selectedAssigneeName) {
                             matches = false;
                         }
                     }
@@ -607,12 +636,18 @@ export function getScript(): string {
         }
 
         function clearAllFilters() {
-            document.getElementById('searchInput').value = '';
-            document.getElementById('versionFilter').value = '';
-            document.getElementById('assigneeFilter').value = '';
-            document.getElementById('trackerFilter').value = '';
+            // nullチェックを追加して要素不在時のエラーを防止
+            const searchInput = document.getElementById('searchInput');
+            const versionFilter = document.getElementById('versionFilter');
+            const assigneeFilter = document.getElementById('assigneeFilter');
+            const trackerFilter = document.getElementById('trackerFilter');
 
-            // ステータスチェックボックスをデフォルト状態にリセット（未着手と着手中をチェック）
+            if (searchInput) searchInput.value = '';
+            if (versionFilter) versionFilter.value = '';
+            if (assigneeFilter) assigneeFilter.value = '';
+            if (trackerFilter) trackerFilter.value = '';
+
+            // ステータスチェックボックスをデフォルト状態にリセット
             resetStatusFilterToDefault();
 
             // 空の階層を非表示チェックボックスをリセット（デフォルトOFF）
@@ -630,25 +665,31 @@ export function getScript(): string {
         }
 
         function resetStatusFilterToDefault() {
+            // globalDefaultStatuses はサーバーから動的に渡される
+            const defaultStatuses = (typeof globalDefaultStatuses !== 'undefined') ? globalDefaultStatuses : [];
             const statusCheckboxes = document.querySelectorAll('input[name="statusFilter"]');
             statusCheckboxes.forEach(cb => {
-                cb.checked = (cb.value === '未着手' || cb.value === '着手中');
+                cb.checked = defaultStatuses.includes(cb.value);
             });
             // Update dropdown text
             const textEl = document.querySelector('.multiselect-text');
             if (textEl) {
-                textEl.textContent = '未着手, 着手中';
+                textEl.textContent = defaultStatuses.length > 0 ? defaultStatuses.join(', ') : 'Select...';
             }
         }
 
         function clearFilter(filterType) {
+            // nullチェックを追加して要素不在時のエラーを防止
+            let el;
             switch(filterType) {
                 case 'search':
-                    document.getElementById('searchInput').value = '';
+                    el = document.getElementById('searchInput');
+                    if (el) el.value = '';
                     applyClientFilters();
                     break;
                 case 'version':
-                    document.getElementById('versionFilter').value = '';
+                    el = document.getElementById('versionFilter');
+                    if (el) el.value = '';
                     applyFilters();
                     break;
                 case 'status':
@@ -656,16 +697,18 @@ export function getScript(): string {
                     applyClientFilters();
                     break;
                 case 'assignee':
-                    document.getElementById('assigneeFilter').value = '';
+                    el = document.getElementById('assigneeFilter');
+                    if (el) el.value = '';
                     applyClientFilters();
                     break;
                 case 'tracker':
-                    document.getElementById('trackerFilter').value = '';
+                    el = document.getElementById('trackerFilter');
+                    if (el) el.value = '';
                     applyClientFilters();
                     break;
                 case 'hideEmpty':
-                    const hideEmptyCheckbox = document.getElementById('hideEmptyHierarchy');
-                    if (hideEmptyCheckbox) hideEmptyCheckbox.checked = false;
+                    el = document.getElementById('hideEmptyHierarchy');
+                    if (el) el.checked = false;
                     applyClientFilters();
                     break;
             }
