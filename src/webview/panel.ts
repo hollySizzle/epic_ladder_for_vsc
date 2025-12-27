@@ -301,6 +301,22 @@ export class EpicLadderWebviewProvider {
                 </div>
             </header>
 
+            <!-- Unified filter bar for narrow width -->
+            <div class="unified-filter-bar" id="unifiedFilterBar">
+                <input type="text" class="unified-search-input" id="unifiedSearchInput"
+                    placeholder="🔍 Search..."
+                    value="${filterOptions?.searchText ?? ''}"
+                    oninput="onUnifiedSearchInput(this.value)">
+                <button class="unified-filter-btn ${activeFilterCount > 0 ? 'active' : ''}" onclick="toggleFilters()" title="Filters">
+                    <span class="unified-filter-icon">⚙</span>
+                    <span>Filters</span>
+                    ${activeFilterCount > 0 ? `<span class="filter-badge">${activeFilterCount}</span>` : ''}
+                </button>
+                <button class="unified-clear-btn" onclick="clearAllFilters()" title="Clear all">✕</button>
+                <button class="unified-reload-btn" onclick="refresh()" title="Reload (Cmd+R)">↻</button>
+            </div>
+
+            <!-- Old filter toggle (hidden, replaced by unified bar) -->
             <button class="filter-toggle" onclick="toggleFilters()">
                 <div class="hamburger">
                     <span></span>

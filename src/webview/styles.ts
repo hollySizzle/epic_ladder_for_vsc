@@ -87,34 +87,9 @@ export function getStyles(): string {
             font-size: 16px;
         }
 
-        /* Filter toggle button (narrow width) */
+        /* Filter toggle button (narrow width) - hidden by default */
         .filter-toggle {
             display: none;
-            align-items: center;
-            gap: 6px;
-            background: var(--vscode-sideBar-background);
-            border: 1px solid var(--border-color);
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            color: var(--text-color);
-            font-size: 13px;
-            margin-bottom: 8px;
-            width: 100%;
-        }
-
-        .filter-toggle .hamburger {
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
-        }
-
-        .filter-toggle .hamburger span {
-            display: block;
-            width: 16px;
-            height: 2px;
-            background: var(--text-color);
-            border-radius: 1px;
         }
 
         .filter-badge {
@@ -124,6 +99,108 @@ export function getStyles(): string {
             padding: 2px 6px;
             border-radius: 10px;
             margin-left: auto;
+        }
+
+        /* ========================================
+           Unified Filter Bar (narrow width)
+           ======================================== */
+        .unified-filter-bar {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 8px;
+            padding: 6px;
+            background: var(--vscode-sideBar-background);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .unified-search-input {
+            flex: 1;
+            min-width: 0;
+            background: var(--input-bg);
+            color: var(--text-color);
+            border: 1px solid var(--input-border);
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .unified-search-input:focus {
+            outline: 1px solid var(--vscode-focusBorder);
+        }
+
+        .unified-search-input::placeholder {
+            color: var(--vscode-input-placeholderForeground);
+        }
+
+        .unified-filter-btn {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--text-color);
+            font-size: 12px;
+            flex-shrink: 0;
+            transition: background 0.15s;
+        }
+
+        .unified-filter-btn:hover {
+            background: var(--hover-bg);
+        }
+
+        .unified-filter-btn.active {
+            background: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border-color: var(--vscode-button-background);
+        }
+
+        .unified-filter-icon {
+            font-size: 11px;
+        }
+
+        .unified-clear-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            padding: 5px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--vscode-descriptionForeground);
+            font-size: 14px;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+
+        .unified-clear-btn:hover {
+            background: var(--vscode-errorForeground);
+            color: var(--vscode-button-foreground);
+            border-color: var(--vscode-errorForeground);
+        }
+
+        .unified-reload-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            padding: 5px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--text-color);
+            font-size: 14px;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+
+        .unified-reload-btn:hover {
+            background: var(--hover-bg);
         }
 
         .filters {
@@ -772,9 +849,19 @@ export function getStyles(): string {
                 font-size: 1em;
             }
 
-            /* Show filter toggle button */
-            .filter-toggle {
+            /* Show unified filter bar (replaces filter-toggle) */
+            .unified-filter-bar {
                 display: flex;
+            }
+
+            /* Hide old filter toggle */
+            .filter-toggle {
+                display: none;
+            }
+
+            /* Hide search input in filters panel (using unified bar instead) */
+            .filter-group-search {
+                display: none;
             }
 
             /* Filters become collapsible */

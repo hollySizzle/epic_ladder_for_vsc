@@ -104,6 +104,16 @@ export function getScript(): string {
         // Search Shortcuts (/, Cmd+F, Ctrl+F)
         // ========================================
         function focusSearchInput() {
+            // Check if unified filter bar is visible (narrow width)
+            const unifiedBar = document.getElementById('unifiedFilterBar');
+            const unifiedSearchInput = document.getElementById('unifiedSearchInput');
+            if (unifiedBar && unifiedSearchInput && getComputedStyle(unifiedBar).display !== 'none') {
+                unifiedSearchInput.focus();
+                unifiedSearchInput.select();
+                return;
+            }
+
+            // Default: focus main search input
             const searchInput = document.getElementById('searchInput');
             if (searchInput) {
                 // Expand filters panel if collapsed (narrow screen)
@@ -137,6 +147,13 @@ export function getScript(): string {
             if ((event.metaKey || event.ctrlKey) && event.key === 'f') {
                 event.preventDefault();
                 focusSearchInput();
+                return;
+            }
+
+            // Cmd+R (Mac) or Ctrl+R (Windows/Linux) - reload
+            if ((event.metaKey || event.ctrlKey) && event.key === 'r') {
+                event.preventDefault();
+                refresh();
                 return;
             }
 
@@ -470,6 +487,29 @@ export function getScript(): string {
             }, 300);
         }
 
+        // Unified filter bar search input handler
+        function onUnifiedSearchInput(value) {
+            // Sync with main search input
+            const mainSearchInput = document.getElementById('searchInput');
+            if (mainSearchInput) {
+                mainSearchInput.value = value;
+            }
+            debounceSearch(value);
+        }
+
+        // Sync unified search with main search input
+        function syncSearchInputs() {
+            const mainSearchInput = document.getElementById('searchInput');
+            const unifiedSearchInput = document.getElementById('unifiedSearchInput');
+            if (mainSearchInput && unifiedSearchInput) {
+                // Sync main -> unified
+                mainSearchInput.addEventListener('input', function() {
+                    unifiedSearchInput.value = this.value;
+                });
+            }
+        }
+        syncSearchInputs();
+
         function filterByMultipleCriteria(searchText, assigneeId, trackerType, selectedStatuses, hideEmptyHierarchy) {
             const items = document.querySelectorAll('.tree-item');
             const searchLower = (searchText || '').toLowerCase();
@@ -493,9 +533,11 @@ export function getScript(): string {
 
                     // Check search text
                     if (searchText) {
-                        // #で始まる場合はID検索モード
-                        if (searchText.startsWith('#')) {
-                            const searchId = searchText.slice(1);
+                        // ID検索モード: #で始まる場合、または数字のみの場合
+                        const isIdSearch = searchText.startsWith('#') || /^\\d+$/.test(searchText);
+                        if (isIdSearch) {
+                            // #を除去してID部分を取得
+                            const searchId = searchText.startsWith('#') ? searchText.slice(1) : searchText;
                             const idElem = item.querySelector('.issue-id');
                             const issueId = (idElem?.textContent || '').replace('#', '');
                             // ID前方一致
