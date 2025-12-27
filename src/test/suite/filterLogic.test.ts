@@ -12,11 +12,13 @@ interface VsCodeMessage {
     selectedStatuses?: string[];
     includeClosed?: boolean;
     hideEmptyHierarchy?: boolean;
+    sortOrder?: string;
 }
 
 // Extended window type for test functions
 interface TestWindow extends DOMWindow {
     applyClientFilters: () => void;
+    applySorting: () => void;
     getCurrentFilterState: () => {
         versionId?: string;
         assigneeId?: string;
@@ -25,6 +27,7 @@ interface TestWindow extends DOMWindow {
         selectedStatuses?: string[];
         includeClosed?: boolean;
         hideEmptyHierarchy?: boolean;
+        sortOrder?: string;
     };
     refresh: () => void;
     clearAllFilters: () => void;
@@ -795,6 +798,258 @@ suite('Filter State and Refresh Test Suite', () => {
                     assert.strictEqual(checkbox.checked, false, `${checkbox.value} should not be checked`);
                 }
             });
+        });
+    });
+
+    suite('sortOrder in filter state', () => {
+        setup(() => {
+            // Add sort dropdown
+            const container = document.querySelector('.container');
+            if (container) {
+                const sortHtml = `
+                    <select id="sortOrder">
+                        <option value="id_asc">ID ↑</option>
+                        <option value="id_desc">ID ↓</option>
+                        <option value="name_asc">Name ↑</option>
+                        <option value="name_desc">Name ↓</option>
+                    </select>
+                `;
+                container.insertAdjacentHTML('afterbegin', sortHtml);
+            }
+        });
+
+        test('should capture sortOrder in getCurrentFilterState', () => {
+            const sortOrder = document.getElementById('sortOrder') as HTMLSelectElement;
+            sortOrder.value = 'name_desc';
+
+            const state = window.getCurrentFilterState();
+
+            assert.strictEqual(state.sortOrder, 'name_desc', 'Should capture sort order');
+        });
+
+        test('should default to id_asc when sortOrder not set', () => {
+            const state = window.getCurrentFilterState();
+
+            assert.strictEqual(state.sortOrder, 'id_asc', 'Default sort order should be id_asc');
+        });
+
+        test('should include sortOrder in refresh message', () => {
+            const sortOrder = document.getElementById('sortOrder') as HTMLSelectElement;
+            sortOrder.value = 'id_desc';
+
+            window.refresh();
+
+            const msg = postMessageCalls[0];
+            assert.strictEqual(msg.sortOrder, 'id_desc', 'Refresh should include sortOrder');
+        });
+    });
+});
+
+/**
+ * Sorting Tests
+ *
+ * These tests verify the sorting functionality in scripts.ts
+ */
+suite('Sorting Test Suite', () => {
+    let dom: JSDOM;
+    let document: Document;
+    let window: TestWindow;
+
+    // Helper to create tree item HTML with specific IDs for sorting tests
+    function createSortableTreeItem(options: {
+        id: string;
+        subject: string;
+    }): string {
+        return `
+            <div class="tree-item" data-id="${options.id}">
+                <div class="tree-item-header">
+                    <span class="issue-id">#${options.id}</span>
+                    <span class="issue-subject">${options.subject}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    setup(() => {
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head></head>
+            <body>
+                <div class="container">
+                    <select id="sortOrder">
+                        <option value="id_asc">ID ↑</option>
+                        <option value="id_desc">ID ↓</option>
+                        <option value="name_asc">Name ↑</option>
+                        <option value="name_desc">Name ↓</option>
+                    </select>
+                    <div class="tree-container">
+                        ${createSortableTreeItem({ id: '103', subject: 'Charlie Task' })}
+                        ${createSortableTreeItem({ id: '101', subject: 'Alpha Task' })}
+                        ${createSortableTreeItem({ id: '102', subject: 'Bravo Task' })}
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+
+        dom = new JSDOM(html, {
+            runScripts: 'dangerously',
+            url: 'http://localhost'
+        });
+        document = dom.window.document;
+        window = dom.window as unknown as TestWindow;
+
+        // Mock vscode API
+        window.acquireVsCodeApi = () => ({
+            postMessage: () => { /* mock */ }
+        });
+
+        // Mock globalDefaultStatuses
+        (window as unknown as { globalDefaultStatuses: string[] }).globalDefaultStatuses = ['未着手', '着手中'];
+
+        // Execute the script
+        const script = getScript();
+        const scriptEl = document.createElement('script');
+        scriptEl.textContent = script;
+        document.body.appendChild(scriptEl);
+    });
+
+    teardown(() => {
+        dom.window.close();
+    });
+
+    suite('applySorting', () => {
+        test('should sort by ID ascending', () => {
+            const sortOrder = document.getElementById('sortOrder') as HTMLSelectElement;
+            sortOrder.value = 'id_asc';
+
+            window.applySorting();
+
+            const container = document.querySelector('.tree-container');
+            const items = container?.querySelectorAll('.tree-item');
+
+            assert.ok(items && items.length === 3, 'Should have 3 items');
+
+            const ids = Array.from(items!).map(item =>
+                item.querySelector('.issue-id')?.textContent?.replace('#', '')
+            );
+
+            assert.deepStrictEqual(ids, ['101', '102', '103'], 'Items should be sorted by ID ascending');
+        });
+
+        test('should sort by ID descending', () => {
+            const sortOrder = document.getElementById('sortOrder') as HTMLSelectElement;
+            sortOrder.value = 'id_desc';
+
+            window.applySorting();
+
+            const container = document.querySelector('.tree-container');
+            const items = container?.querySelectorAll('.tree-item');
+            const ids = Array.from(items!).map(item =>
+                item.querySelector('.issue-id')?.textContent?.replace('#', '')
+            );
+
+            assert.deepStrictEqual(ids, ['103', '102', '101'], 'Items should be sorted by ID descending');
+        });
+
+        test('should sort by name ascending', () => {
+            const sortOrder = document.getElementById('sortOrder') as HTMLSelectElement;
+            sortOrder.value = 'name_asc';
+
+            window.applySorting();
+
+            const container = document.querySelector('.tree-container');
+            const items = container?.querySelectorAll('.tree-item');
+            const subjects = Array.from(items!).map(item =>
+                item.querySelector('.issue-subject')?.textContent
+            );
+
+            assert.deepStrictEqual(subjects, ['Alpha Task', 'Bravo Task', 'Charlie Task'], 'Items should be sorted by name ascending');
+        });
+
+        test('should sort by name descending', () => {
+            const sortOrder = document.getElementById('sortOrder') as HTMLSelectElement;
+            sortOrder.value = 'name_desc';
+
+            window.applySorting();
+
+            const container = document.querySelector('.tree-container');
+            const items = container?.querySelectorAll('.tree-item');
+            const subjects = Array.from(items!).map(item =>
+                item.querySelector('.issue-subject')?.textContent
+            );
+
+            assert.deepStrictEqual(subjects, ['Charlie Task', 'Bravo Task', 'Alpha Task'], 'Items should be sorted by name descending');
+        });
+
+        test('should apply sorting after client filter', () => {
+            // Set sort order before filtering
+            const sortOrder = document.getElementById('sortOrder') as HTMLSelectElement;
+            sortOrder.value = 'name_asc';
+
+            // Apply client filters (which should call applySorting at the end)
+            window.applyClientFilters();
+
+            const container = document.querySelector('.tree-container');
+            const items = container?.querySelectorAll('.tree-item:not(.search-hidden)');
+            const subjects = Array.from(items!).map(item =>
+                item.querySelector('.issue-subject')?.textContent
+            );
+
+            assert.deepStrictEqual(subjects, ['Alpha Task', 'Bravo Task', 'Charlie Task'], 'Items should be sorted after filtering');
+        });
+    });
+
+    suite('sort within hierarchy', () => {
+        setup(() => {
+            // Add nested tree structure
+            const container = document.querySelector('.tree-container');
+            if (container) {
+                container.innerHTML = `
+                    <div class="tree-item" data-id="1">
+                        <div class="tree-item-header">
+                            <span class="issue-id">#1</span>
+                            <span class="issue-subject">Epic</span>
+                        </div>
+                        <div class="tree-children">
+                            ${createSortableTreeItem({ id: '13', subject: 'Zebra Feature' })}
+                            ${createSortableTreeItem({ id: '11', subject: 'Alpha Feature' })}
+                            ${createSortableTreeItem({ id: '12', subject: 'Beta Feature' })}
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        test('should sort children within their container', () => {
+            const sortOrder = document.getElementById('sortOrder') as HTMLSelectElement;
+            sortOrder.value = 'name_asc';
+
+            window.applySorting();
+
+            const childrenContainer = document.querySelector('.tree-children');
+            const items = childrenContainer?.querySelectorAll(':scope > .tree-item');
+            const subjects = Array.from(items!).map(item =>
+                item.querySelector('.issue-subject')?.textContent
+            );
+
+            assert.deepStrictEqual(subjects, ['Alpha Feature', 'Beta Feature', 'Zebra Feature'], 'Children should be sorted within hierarchy');
+        });
+
+        test('should sort by ID within hierarchy', () => {
+            const sortOrder = document.getElementById('sortOrder') as HTMLSelectElement;
+            sortOrder.value = 'id_desc';
+
+            window.applySorting();
+
+            const childrenContainer = document.querySelector('.tree-children');
+            const items = childrenContainer?.querySelectorAll(':scope > .tree-item');
+            const ids = Array.from(items!).map(item =>
+                item.querySelector('.issue-id')?.textContent?.replace('#', '')
+            );
+
+            assert.deepStrictEqual(ids, ['13', '12', '11'], 'Children should be sorted by ID within hierarchy');
         });
     });
 });

@@ -27,6 +27,7 @@ export function getScript(): string {
             const searchInput = document.getElementById('searchInput');
             const hideEmptyCheckbox = document.getElementById('hideEmptyHierarchy');
             const statusCheckboxes = document.querySelectorAll('input[name="statusFilter"]:checked');
+            const sortOrder = document.getElementById('sortOrder');
 
             const selectedStatuses = Array.from(statusCheckboxes).map(cb => cb.value);
             const includesClosed = selectedStatuses.includes('クローズ');
@@ -38,7 +39,8 @@ export function getScript(): string {
                 searchText: searchInput?.value || undefined,
                 selectedStatuses: selectedStatuses,
                 includeClosed: includesClosed,
-                hideEmptyHierarchy: hideEmptyCheckbox?.checked || false
+                hideEmptyHierarchy: hideEmptyCheckbox?.checked || false,
+                sortOrder: sortOrder?.value || 'id_asc'
             };
         }
 
@@ -626,6 +628,9 @@ export function getScript(): string {
             if (hideEmptyHierarchy) {
                 hideEmptyHierarchyItems();
             }
+
+            // フィルタ後にソートを再適用
+            applySorting();
         }
 
         // フィルタ後にUserStoryを持たないEpic/Featureを非表示にする

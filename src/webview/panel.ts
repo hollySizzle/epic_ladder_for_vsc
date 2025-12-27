@@ -403,10 +403,10 @@ export class EpicLadderWebviewProvider {
                     <div class="filter-group">
                         <label for="sortOrder">Sort</label>
                         <select id="sortOrder" onchange="applySorting()">
-                            <option value="id_asc">ID ↑</option>
-                            <option value="id_desc">ID ↓</option>
-                            <option value="name_asc">${isJa ? '名前' : 'Name'} ↑</option>
-                            <option value="name_desc">${isJa ? '名前' : 'Name'} ↓</option>
+                            <option value="id_asc" ${(filterOptions as Record<string, unknown>)?.sortOrder === 'id_asc' ? 'selected' : ''}>ID ↑</option>
+                            <option value="id_desc" ${(filterOptions as Record<string, unknown>)?.sortOrder === 'id_desc' ? 'selected' : ''}>ID ↓</option>
+                            <option value="name_asc" ${(filterOptions as Record<string, unknown>)?.sortOrder === 'name_asc' ? 'selected' : ''}>${isJa ? '名前' : 'Name'} ↑</option>
+                            <option value="name_desc" ${(filterOptions as Record<string, unknown>)?.sortOrder === 'name_desc' ? 'selected' : ''}>${isJa ? '名前' : 'Name'} ↓</option>
                         </select>
                     </div>
                     <div class="filter-group filter-checkbox">
