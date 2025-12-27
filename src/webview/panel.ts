@@ -265,6 +265,17 @@ export class EpicLadderWebviewProvider {
         filterOptions?: FilterOptions
     ): string {
         const nonce = getNonce();
+        // 言語判定（日本語 or その他）
+        const isJa = vscode.env.language.startsWith('ja');
+        const i18n = {
+            searchPlaceholder: isJa ? '🔍 検索 (#でID指定)' : '🔍 Search (#ID)',
+            filters: 'Filters',
+            hideEmptyHierarchy: isJa ? '空の階層を非表示' : 'Hide empty hierarchy',
+            allVersions: 'All Versions',
+            allAssignees: 'All Assignees',
+            allTypes: 'All Types',
+            clearFilters: 'Clear Filters',
+        };
         // メンバー一覧をAssigneeInfo形式に変換
         const assignees: AssigneeInfo[] = members.map(m => ({
             id: m.user_id,
@@ -304,12 +315,12 @@ export class EpicLadderWebviewProvider {
             <!-- Unified filter bar for narrow width -->
             <div class="unified-filter-bar" id="unifiedFilterBar">
                 <input type="text" class="unified-search-input" id="unifiedSearchInput"
-                    placeholder="🔍 検索 (#でID指定)"
+                    placeholder="${i18n.searchPlaceholder}"
                     value="${filterOptions?.searchText ?? ''}"
                     oninput="onUnifiedSearchInput(this.value)">
-                <button class="unified-filter-btn ${activeFilterCount > 0 ? 'active' : ''}" onclick="toggleFilters()" title="Filters">
+                <button class="unified-filter-btn ${activeFilterCount > 0 ? 'active' : ''}" onclick="toggleFilters()" title="${i18n.filters}">
                     <span class="unified-filter-icon">⚙</span>
-                    <span>Filters</span>
+                    <span>${i18n.filters}</span>
                     ${activeFilterCount > 0 ? `<span class="filter-badge">${activeFilterCount}</span>` : ''}
                 </button>
                 <button class="unified-clear-btn" onclick="clearAllFilters()" title="Clear all">✕</button>
@@ -331,14 +342,14 @@ export class EpicLadderWebviewProvider {
                 <div class="filter-row">
                     <div class="filter-group filter-group-search">
                         <label for="searchInput">Search</label>
-                        <input type="text" id="searchInput" placeholder="検索 (#でID指定)"
+                        <input type="text" id="searchInput" placeholder="${isJa ? '検索 (#でID指定)' : 'Search (#ID)'}"
                             value="${filterOptions?.searchText ?? ''}"
                             oninput="debounceSearch(this.value)">
                     </div>
                     <div class="filter-group filter-group-version">
                         <label for="versionFilter">Version</label>
                         <select id="versionFilter" onchange="applyFilters()">
-                            <option value="">All Versions</option>
+                            <option value="">${i18n.allVersions}</option>
                             ${versions.map(v => `
                                 <option value="${v.id}" ${filterOptions?.versionId === v.id ? 'selected' : ''}>
                                     ${escapeHtml(v.name)}
@@ -370,7 +381,7 @@ export class EpicLadderWebviewProvider {
                     <div class="filter-group">
                         <label for="assigneeFilter">Assignee</label>
                         <select id="assigneeFilter" onchange="applyClientFilters()">
-                            <option value="">All Assignees</option>
+                            <option value="">${i18n.allAssignees}</option>
                             ${assignees.map(a => `
                                 <option value="${a.id}" ${filterOptions?.assigneeId === a.id ? 'selected' : ''}>
                                     ${escapeHtml(a.name)}
@@ -381,7 +392,7 @@ export class EpicLadderWebviewProvider {
                     <div class="filter-group">
                         <label for="trackerFilter">Type</label>
                         <select id="trackerFilter" onchange="applyClientFilters()">
-                            <option value="">All Types</option>
+                            <option value="">${i18n.allTypes}</option>
                             ${trackerTypes.map(t => `
                                 <option value="${t}" ${filterOptions?.trackerType === t ? 'selected' : ''}>
                                     ${t}
@@ -394,13 +405,13 @@ export class EpicLadderWebviewProvider {
                             <input type="checkbox" id="hideEmptyHierarchy"
                                 ${filterOptions?.hideEmptyHierarchy ? 'checked' : ''}
                                 onchange="applyClientFilters()">
-                            <span>空の階層を非表示</span>
+                            <span>${i18n.hideEmptyHierarchy}</span>
                         </label>
                     </div>
                     <div class="filter-group filter-actions">
                         <label>&nbsp;</label>
-                        <button class="btn btn-clear" onclick="clearAllFilters()" title="Clear all filters">
-                            Clear Filters
+                        <button class="btn btn-clear" onclick="clearAllFilters()" title="${i18n.clearFilters}">
+                            ${i18n.clearFilters}
                         </button>
                     </div>
                 </div>
