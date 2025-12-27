@@ -515,7 +515,8 @@ export function getScript(): string {
                     // Check assignee (完全一致で比較)
                     if (matches && assigneeId) {
                         const assigneeElem = item.querySelector('.assignee-badge');
-                        const itemAssignee = (assigneeElem?.textContent || '').replace('@', '').trim();
+                        // textContentには矢印(▼)が含まれるため除去
+                        const itemAssignee = (assigneeElem?.textContent || '').replace('@', '').replace('▼', '').trim();
                         // Get selected assignee name from dropdown
                         const assigneeSelect = document.getElementById('assigneeFilter');
                         const selectedAssigneeName = (assigneeSelect?.options[assigneeSelect.selectedIndex]?.text || '').replace('@', '').trim();
