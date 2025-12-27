@@ -407,6 +407,8 @@ export class EpicLadderWebviewProvider {
                             <option value="id_desc" ${(filterOptions as Record<string, unknown>)?.sortOrder === 'id_desc' ? 'selected' : ''}>ID ↓</option>
                             <option value="name_asc" ${(filterOptions as Record<string, unknown>)?.sortOrder === 'name_asc' ? 'selected' : ''}>${isJa ? '名前' : 'Name'} ↑</option>
                             <option value="name_desc" ${(filterOptions as Record<string, unknown>)?.sortOrder === 'name_desc' ? 'selected' : ''}>${isJa ? '名前' : 'Name'} ↓</option>
+                            <option value="version_asc" ${(filterOptions as Record<string, unknown>)?.sortOrder === 'version_asc' ? 'selected' : ''}>${isJa ? '期日' : 'Due'} ↑</option>
+                            <option value="version_desc" ${(filterOptions as Record<string, unknown>)?.sortOrder === 'version_desc' ? 'selected' : ''}>${isJa ? '期日' : 'Due'} ↓</option>
                         </select>
                     </div>
                     <div class="filter-group filter-checkbox">
@@ -456,7 +458,7 @@ export class EpicLadderWebviewProvider {
 
         <div class="scrollable-content">
             <div class="tree-container" id="treeContainer">
-                ${renderEpics(structure.structure, statusTypes, assignees)}
+                ${renderEpics(structure.structure, statusTypes, assignees, versions)}
             </div>
         </div>
     </div>

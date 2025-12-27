@@ -22,7 +22,7 @@ export interface AssigneeInfo {
 /**
  * Render all epics as HTML tree
  */
-export function renderEpics(epics: ProjectStructureEpic[], statusOptions: string[], members: AssigneeInfo[] = []): string {
+export function renderEpics(epics: ProjectStructureEpic[], statusOptions: string[], members: AssigneeInfo[] = [], versions: RedmineVersion[] = []): string {
     if (!epics || epics.length === 0) {
         return '<div class="empty-state">No epics found</div>';
     }
@@ -38,7 +38,7 @@ export function renderEpics(epics: ProjectStructureEpic[], statusOptions: string
                 <span class="issue-subject">${escapeHtml(epic.subject)}</span>
             </div>
             <div class="tree-children">
-                ${renderFeatures(epic.features, statusOptions, members)}
+                ${renderFeatures(epic.features, statusOptions, members, versions)}
             </div>
         </div>
     `).join('');
@@ -47,7 +47,7 @@ export function renderEpics(epics: ProjectStructureEpic[], statusOptions: string
 /**
  * Render features as HTML tree
  */
-export function renderFeatures(features: ProjectStructureEpic['features'], statusOptions: string[], members: AssigneeInfo[] = []): string {
+export function renderFeatures(features: ProjectStructureEpic['features'], statusOptions: string[], members: AssigneeInfo[] = [], versions: RedmineVersion[] = []): string {
     if (!features || features.length === 0) {
         return '';
     }
@@ -63,16 +63,25 @@ export function renderFeatures(features: ProjectStructureEpic['features'], statu
                 <span class="issue-subject">${escapeHtml(feature.subject)}</span>
             </div>
             <div class="tree-children">
-                ${renderUserStories(feature.user_stories, statusOptions, members)}
+                ${renderUserStories(feature.user_stories, statusOptions, members, versions)}
             </div>
         </div>
     `).join('');
 }
 
 /**
+ * Helper to get effective_date from version ID
+ */
+function getVersionDate(versionId: string | undefined, versions: RedmineVersion[]): string {
+    if (!versionId) return '';
+    const version = versions.find(v => v.id === versionId);
+    return version?.effective_date || '';
+}
+
+/**
  * Render user stories as HTML tree
  */
-export function renderUserStories(stories: ProjectStructureEpic['features'][0]['user_stories'], statusOptions: string[], members: AssigneeInfo[] = []): string {
+export function renderUserStories(stories: ProjectStructureEpic['features'][0]['user_stories'], statusOptions: string[], members: AssigneeInfo[] = [], versions: RedmineVersion[] = []): string {
     if (!stories || stories.length === 0) {
         return '';
     }
@@ -85,9 +94,11 @@ export function renderUserStories(stories: ProjectStructureEpic['features'][0]['
         );
 
         const versionInfo = story.version ? `<span class="version">${escapeHtml(story.version.name)}</span>` : '';
+        const versionDate = getVersionDate(story.version?.id, versions);
+        const versionDateAttr = versionDate ? ` data-version-date="${versionDate}"` : '';
 
         return `
-            <div class="tree-item tree-item-story" data-id="${story.id}">
+            <div class="tree-item tree-item-story" data-id="${story.id}"${versionDateAttr}>
                 <div class="tree-item-header ${hasChildren ? '' : 'no-children'}" onclick="toggleDetail(event, '${story.id}')">
                     ${hasChildren ? `<span class="collapse-icon" onclick="event.stopPropagation(); toggleCollapse(this.parentElement)">&#9662;</span>` : '<span class="collapse-icon-placeholder"></span>'}
                     <span class="type-badge badge-story">Story</span>
@@ -100,7 +111,7 @@ export function renderUserStories(stories: ProjectStructureEpic['features'][0]['
                 </div>
                 ${hasChildren ? `
                     <div class="tree-children">
-                        ${renderChildren(story.children!, statusOptions, members)}
+                        ${renderChildren(story.children!, statusOptions, members, versionDate)}
                     </div>
                 ` : ''}
             </div>
@@ -111,19 +122,19 @@ export function renderUserStories(stories: ProjectStructureEpic['features'][0]['
 /**
  * Render children (tasks, bugs, tests) as HTML
  */
-export function renderChildren(children: NonNullable<ProjectStructureEpic['features'][0]['user_stories'][0]['children']>, statusOptions: string[], members: AssigneeInfo[] = []): string {
+export function renderChildren(children: NonNullable<ProjectStructureEpic['features'][0]['user_stories'][0]['children']>, statusOptions: string[], members: AssigneeInfo[] = [], parentVersionDate: string = ''): string {
     const items: string[] = [];
 
     children.tasks.forEach(task => {
-        items.push(renderLeafItem(task, 'Task', 'badge-task', statusOptions, members));
+        items.push(renderLeafItem(task, 'Task', 'badge-task', statusOptions, members, parentVersionDate));
     });
 
     children.bugs.forEach(bug => {
-        items.push(renderLeafItem(bug, 'Bug', 'badge-bug', statusOptions, members));
+        items.push(renderLeafItem(bug, 'Bug', 'badge-bug', statusOptions, members, parentVersionDate));
     });
 
     children.tests.forEach(test => {
-        items.push(renderLeafItem(test, 'Test', 'badge-test', statusOptions, members));
+        items.push(renderLeafItem(test, 'Test', 'badge-test', statusOptions, members, parentVersionDate));
     });
 
     return items.join('');
@@ -137,10 +148,12 @@ export function renderLeafItem(
     type: string,
     badgeClass: string,
     statusOptions: string[],
-    members: AssigneeInfo[] = []
+    members: AssigneeInfo[] = [],
+    versionDate: string = ''
 ): string {
+    const versionDateAttr = versionDate ? ` data-version-date="${versionDate}"` : '';
     return `
-        <div class="tree-item tree-item-leaf" data-id="${item.id}">
+        <div class="tree-item tree-item-leaf" data-id="${item.id}"${versionDateAttr}>
             <div class="tree-item-header no-children" onclick="toggleDetail(event, '${item.id}')">
                 <span class="collapse-icon-placeholder"></span>
                 <span class="type-badge ${badgeClass}">${type}</span>

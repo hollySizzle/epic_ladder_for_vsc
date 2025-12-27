@@ -758,6 +758,11 @@ export function getScript(): string {
                     } else if (field === 'name') {
                         valA = (a.querySelector('.issue-subject')?.textContent || '').toLowerCase();
                         valB = (b.querySelector('.issue-subject')?.textContent || '').toLowerCase();
+                    } else if (field === 'version') {
+                        // Version sort by effective_date (ISO format, string comparison works)
+                        // Items without version date go to the end
+                        valA = a.getAttribute('data-version-date') || '9999-12-31';
+                        valB = b.getAttribute('data-version-date') || '9999-12-31';
                     }
 
                     let result = 0;

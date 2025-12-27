@@ -882,6 +882,8 @@ suite('Sorting Test Suite', () => {
                         <option value="id_desc">ID ↓</option>
                         <option value="name_asc">Name ↑</option>
                         <option value="name_desc">Name ↓</option>
+                        <option value="version_asc">Due ↑</option>
+                        <option value="version_desc">Due ↓</option>
                     </select>
                     <div class="tree-container">
                         ${createSortableTreeItem({ id: '103', subject: 'Charlie Task' })}
@@ -1050,6 +1052,83 @@ suite('Sorting Test Suite', () => {
             );
 
             assert.deepStrictEqual(ids, ['13', '12', '11'], 'Children should be sorted by ID within hierarchy');
+        });
+    });
+
+    suite('version (due date) sorting', () => {
+        setup(() => {
+            // Add tree items with version dates
+            const container = document.querySelector('.tree-container');
+            if (container) {
+                container.innerHTML = `
+                    <div class="tree-item" data-id="101" data-version-date="2025-12-29">
+                        <div class="tree-item-header">
+                            <span class="issue-id">#101</span>
+                            <span class="issue-subject">Sprint W52 Task</span>
+                        </div>
+                    </div>
+                    <div class="tree-item" data-id="102" data-version-date="2025-12-22">
+                        <div class="tree-item-header">
+                            <span class="issue-id">#102</span>
+                            <span class="issue-subject">Sprint W51 Task</span>
+                        </div>
+                    </div>
+                    <div class="tree-item" data-id="103">
+                        <div class="tree-item-header">
+                            <span class="issue-id">#103</span>
+                            <span class="issue-subject">No Version Task</span>
+                        </div>
+                    </div>
+                    <div class="tree-item" data-id="104" data-version-date="2025-12-15">
+                        <div class="tree-item-header">
+                            <span class="issue-id">#104</span>
+                            <span class="issue-subject">Sprint W50 Task</span>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        test('should sort by version date ascending', () => {
+            const sortOrder = document.getElementById('sortOrder') as HTMLSelectElement;
+            sortOrder.value = 'version_asc';
+
+            window.applySorting();
+
+            const container = document.querySelector('.tree-container');
+            const items = container?.querySelectorAll('.tree-item');
+            const ids = Array.from(items!).map(item => item.getAttribute('data-id'));
+
+            // W50 (12-15) -> W51 (12-22) -> W52 (12-29) -> No version (末尾)
+            assert.deepStrictEqual(ids, ['104', '102', '101', '103'], 'Items should be sorted by version date ascending');
+        });
+
+        test('should sort by version date descending', () => {
+            const sortOrder = document.getElementById('sortOrder') as HTMLSelectElement;
+            sortOrder.value = 'version_desc';
+
+            window.applySorting();
+
+            const container = document.querySelector('.tree-container');
+            const items = container?.querySelectorAll('.tree-item');
+            const ids = Array.from(items!).map(item => item.getAttribute('data-id'));
+
+            // No version (9999-12-31 reversed = first) -> W52 -> W51 -> W50
+            assert.deepStrictEqual(ids, ['103', '101', '102', '104'], 'Items should be sorted by version date descending');
+        });
+
+        test('should place items without version date at the end when ascending', () => {
+            const sortOrder = document.getElementById('sortOrder') as HTMLSelectElement;
+            sortOrder.value = 'version_asc';
+
+            window.applySorting();
+
+            const container = document.querySelector('.tree-container');
+            const items = container?.querySelectorAll('.tree-item');
+            const lastItem = items![items!.length - 1];
+
+            assert.strictEqual(lastItem.getAttribute('data-id'), '103', 'Item without version should be at the end');
+            assert.ok(!lastItem.hasAttribute('data-version-date') || lastItem.getAttribute('data-version-date') === '', 'Last item should not have version date');
         });
     });
 });
