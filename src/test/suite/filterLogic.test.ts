@@ -189,6 +189,36 @@ suite('Filter Logic Test Suite', () => {
             assert.ok(item105 && !item105.classList.contains('search-hidden'), 'Item 105 should be visible');
         });
 
+        test('should treat numeric-only input as subject search (not ID search)', () => {
+            const searchInput = document.getElementById('searchInput') as HTMLInputElement;
+            // 数字のみの入力は件名検索として扱う（ID検索には#が必要）
+            searchInput.value = '101';
+
+            window.applyClientFilters();
+
+            // ID 101 exists but "101" is not in any subject, so all should be hidden
+            const allItems = document.querySelectorAll('.tree-item');
+            const visibleItems = document.querySelectorAll('.tree-item:not(.search-hidden)');
+
+            assert.strictEqual(visibleItems.length, 0, 'No items should match numeric subject search');
+        });
+
+        test('should require # prefix for ID search', () => {
+            const searchInput = document.getElementById('searchInput') as HTMLInputElement;
+
+            // Without # - should search in subject
+            searchInput.value = '100';
+            window.applyClientFilters();
+            let item100 = document.querySelector('.tree-item[data-id="100"]');
+            assert.ok(item100 && item100.classList.contains('search-hidden'), 'Without #, 100 should not match (subject search)');
+
+            // With # - should search by ID
+            searchInput.value = '#100';
+            window.applyClientFilters();
+            item100 = document.querySelector('.tree-item[data-id="100"]');
+            assert.ok(item100 && !item100.classList.contains('search-hidden'), 'With #, 100 should match (ID search)');
+        });
+
         test('should filter by assignee', () => {
             const assigneeFilter = document.getElementById('assigneeFilter') as HTMLSelectElement;
             assigneeFilter.value = '1'; // Alice
