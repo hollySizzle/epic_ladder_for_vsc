@@ -8,6 +8,16 @@ import {
     ProjectStructureStatus
 } from './types';
 
+// 多言語対応メッセージ
+const isJa = vscode.env.language.startsWith('ja');
+const messages = {
+    configureRedmineUrl: isJa ? 'Redmine URLを設定してください' : 'Please configure Redmine URL',
+    fetchFailed: isJa ? 'データの取得に失敗しました' : 'Failed to fetch data',
+    noEpicsFound: isJa ? 'Epicが見つかりません' : 'No Epics found',
+    unknownError: isJa ? '不明なエラー' : 'Unknown error',
+    errorPrefix: isJa ? 'エラー' : 'Error',
+};
+
 // TreeView用の統一インターフェース
 interface TreeItemData {
     id: string;
@@ -47,7 +57,7 @@ export class RedmineIssuesProvider implements vscode.TreeDataProvider<RedmineTre
 
     async getChildren(element?: RedmineTreeItem): Promise<RedmineTreeItem[]> {
         if (!this.mcpClient) {
-            return [new MessageTreeItem('Redmine URLを設定してください', 'warning')];
+            return [new MessageTreeItem(messages.configureRedmineUrl, 'warning')];
         }
 
         try {
@@ -61,12 +71,12 @@ export class RedmineIssuesProvider implements vscode.TreeDataProvider<RedmineTre
                     if (response.success) {
                         this.cachedData = this.convertEpicsToTreeData(response.structure);
                     } else {
-                        return [new MessageTreeItem('データの取得に失敗しました', 'error')];
+                        return [new MessageTreeItem(messages.fetchFailed, 'error')];
                     }
                 }
 
                 if (!this.cachedData || this.cachedData.length === 0) {
-                    return [new MessageTreeItem('Epicが見つかりません', 'info')];
+                    return [new MessageTreeItem(messages.noEpicsFound, 'info')];
                 }
 
                 return this.cachedData.map(item => new RedmineIssueTreeItem(item));
@@ -76,8 +86,8 @@ export class RedmineIssuesProvider implements vscode.TreeDataProvider<RedmineTre
 
             return [];
         } catch (error) {
-            const message = error instanceof Error ? error.message : '不明なエラー';
-            return [new MessageTreeItem(`エラー: ${message}`, 'error')];
+            const errMsg = error instanceof Error ? error.message : messages.unknownError;
+            return [new MessageTreeItem(`${messages.errorPrefix}: ${errMsg}`, 'error')];
         }
     }
 

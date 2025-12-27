@@ -240,16 +240,25 @@ export function renderAssigneeBadge(
 }
 
 /**
+ * i18n labels for filter badges
+ */
+export interface FilterBadgeLabels {
+    hideEmptyHierarchy: string;
+}
+
+/**
  * Render active filter badges
  */
 export function renderActiveFilterBadges(
     filterOptions: FilterOptions | undefined,
     versions: RedmineVersion[],
     assignees: AssigneeInfo[],
-    defaultStatuses?: string[]
+    defaultStatuses?: string[],
+    labels?: FilterBadgeLabels
 ): string {
     if (!filterOptions) return '';
     const badges: string[] = [];
+    const hideEmptyLabel = labels?.hideEmptyHierarchy ?? 'Hide empty hierarchy';
 
     if (filterOptions.searchText) {
         badges.push(`<span class="active-filter-badge" data-filter="search">
@@ -291,7 +300,7 @@ export function renderActiveFilterBadges(
     }
     if (filterOptions.hideEmptyHierarchy) {
         badges.push(`<span class="active-filter-badge" data-filter="hideEmpty">
-            空の階層を非表示
+            ${hideEmptyLabel}
             <span class="remove-filter" onclick="clearFilter('hideEmpty')">×</span>
         </span>`);
     }

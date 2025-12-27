@@ -418,7 +418,7 @@ export class EpicLadderWebviewProvider {
                 ${activeFilterCount > 0 ? `
                     <div class="active-filters">
                         <span class="active-filters-label">Active:</span>
-                        ${renderActiveFilterBadges(filterOptions, versions, assignees, defaultStatuses)}
+                        ${renderActiveFilterBadges(filterOptions, versions, assignees, defaultStatuses, { hideEmptyHierarchy: i18n.hideEmptyHierarchy })}
                     </div>
                 ` : ''}
             </div>
