@@ -729,6 +729,44 @@ export function getScript(): string {
             }
         }
 
+        // ========================================
+        // Sorting
+        // ========================================
+        function applySorting() {
+            const sortOrder = document.getElementById('sortOrder')?.value || 'id_asc';
+            const [field, direction] = sortOrder.split('_');
+
+            // Sort within each parent container
+            const containers = document.querySelectorAll('.tree-children, .tree-container');
+            containers.forEach(container => {
+                const items = Array.from(container.querySelectorAll(':scope > .tree-item'));
+                if (items.length <= 1) return;
+
+                items.sort((a, b) => {
+                    let valA, valB;
+
+                    if (field === 'id') {
+                        const idA = a.querySelector('.issue-id')?.textContent?.replace('#', '') || '0';
+                        const idB = b.querySelector('.issue-id')?.textContent?.replace('#', '') || '0';
+                        valA = parseInt(idA, 10);
+                        valB = parseInt(idB, 10);
+                    } else if (field === 'name') {
+                        valA = (a.querySelector('.issue-subject')?.textContent || '').toLowerCase();
+                        valB = (b.querySelector('.issue-subject')?.textContent || '').toLowerCase();
+                    }
+
+                    let result = 0;
+                    if (valA < valB) result = -1;
+                    else if (valA > valB) result = 1;
+
+                    return direction === 'desc' ? -result : result;
+                });
+
+                // Re-append in sorted order
+                items.forEach(item => container.appendChild(item));
+            });
+        }
+
         function clearFilter(filterType) {
             // nullチェックを追加して要素不在時のエラーを防止
             let el;

@@ -400,6 +400,15 @@ export class EpicLadderWebviewProvider {
                             `).join('')}
                         </select>
                     </div>
+                    <div class="filter-group">
+                        <label for="sortOrder">Sort</label>
+                        <select id="sortOrder" onchange="applySorting()">
+                            <option value="id_asc">ID ↑</option>
+                            <option value="id_desc">ID ↓</option>
+                            <option value="name_asc">${isJa ? '名前' : 'Name'} ↑</option>
+                            <option value="name_desc">${isJa ? '名前' : 'Name'} ↓</option>
+                        </select>
+                    </div>
                     <div class="filter-group filter-checkbox">
                         <label class="inline-checkbox">
                             <input type="checkbox" id="hideEmptyHierarchy"
