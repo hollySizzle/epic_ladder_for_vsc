@@ -7,6 +7,30 @@ let mcpClient: McpClient | undefined;
 let issuesProvider: RedmineIssuesProvider;
 let webviewProvider: EpicLadderWebviewProvider;
 
+/**
+ * Expands environment variable references in a string.
+ * Supports ${env:VARIABLE_NAME} format.
+ * @param value - The string that may contain environment variable references
+ * @returns The string with environment variables expanded
+ */
+export function expandEnvVariables(value: string | undefined): string | undefined {
+    if (!value) {
+        return value;
+    }
+
+    // Match ${env:VARIABLE_NAME} pattern
+    const envPattern = /\$\{env:([^}]+)\}/g;
+
+    return value.replace(envPattern, (match, envVarName) => {
+        const envValue = process.env[envVarName];
+        if (envValue === undefined) {
+            console.warn(`Environment variable "${envVarName}" is not set`);
+            return match; // Return original if not found
+        }
+        return envValue;
+    });
+}
+
 export function activate(context: vscode.ExtensionContext) {
     console.log('Redmine Epic Ladder extension is now active');
 
@@ -46,9 +70,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 function initializeMcpClient(): void {
     const config = vscode.workspace.getConfiguration('redmine');
-    const serverUrl = config.get<string>('url');
-    const apiKey = config.get<string>('apiKey');
-    const defaultProject = config.get<string>('defaultProject');
+    const serverUrl = expandEnvVariables(config.get<string>('url'));
+    const apiKey = expandEnvVariables(config.get<string>('apiKey'));
+    const defaultProject = expandEnvVariables(config.get<string>('defaultProject'));
 
     // Check required settings
     const missingSettings: string[] = [];

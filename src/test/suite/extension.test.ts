@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { isCommandRegistered, sleep, activateExtension } from './helpers';
+import { expandEnvVariables } from '../../extension';
 
 suite('Extension Test Suite', () => {
     vscode.window.showInformationMessage('Starting extension tests.');
@@ -52,5 +53,57 @@ suite('Extension Test Suite', () => {
         assert.ok(url, 'redmine.url configuration should exist');
         assert.ok(apiKey, 'redmine.apiKey configuration should exist');
         assert.ok(defaultProject, 'redmine.defaultProject configuration should exist');
+    });
+});
+
+suite('expandEnvVariables Test Suite', () => {
+    const originalEnv = { ...process.env };
+
+    setup(() => {
+        // Set up test environment variables
+        process.env['TEST_VAR'] = 'test_value';
+        process.env['ANOTHER_VAR'] = 'another_value';
+    });
+
+    teardown(() => {
+        // Restore original environment
+        process.env = { ...originalEnv };
+    });
+
+    test('should return undefined for undefined input', () => {
+        assert.strictEqual(expandEnvVariables(undefined), undefined);
+    });
+
+    test('should return empty string for empty input', () => {
+        assert.strictEqual(expandEnvVariables(''), '');
+    });
+
+    test('should return string as-is when no env variables present', () => {
+        assert.strictEqual(expandEnvVariables('https://example.com'), 'https://example.com');
+    });
+
+    test('should expand single environment variable', () => {
+        const result = expandEnvVariables('${env:TEST_VAR}');
+        assert.strictEqual(result, 'test_value');
+    });
+
+    test('should expand environment variable within text', () => {
+        const result = expandEnvVariables('https://${env:TEST_VAR}.example.com');
+        assert.strictEqual(result, 'https://test_value.example.com');
+    });
+
+    test('should expand multiple environment variables', () => {
+        const result = expandEnvVariables('${env:TEST_VAR}-${env:ANOTHER_VAR}');
+        assert.strictEqual(result, 'test_value-another_value');
+    });
+
+    test('should keep original pattern for undefined environment variable', () => {
+        const result = expandEnvVariables('${env:UNDEFINED_VAR}');
+        assert.strictEqual(result, '${env:UNDEFINED_VAR}');
+    });
+
+    test('should handle mixed defined and undefined variables', () => {
+        const result = expandEnvVariables('${env:TEST_VAR}-${env:UNDEFINED_VAR}');
+        assert.strictEqual(result, 'test_value-${env:UNDEFINED_VAR}');
     });
 });
