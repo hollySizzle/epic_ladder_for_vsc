@@ -9,7 +9,7 @@ let webviewProvider: EpicLadderWebviewProvider;
 
 /**
  * Expands environment variable references in a string.
- * Supports ${env:VARIABLE_NAME} format.
+ * Supports both ${env:VARIABLE_NAME} and ${VARIABLE_NAME} formats.
  * @param value - The string that may contain environment variable references
  * @returns The string with environment variables expanded
  */
@@ -18,8 +18,10 @@ export function expandEnvVariables(value: string | undefined): string | undefine
         return value;
     }
 
-    // Match ${env:VARIABLE_NAME} pattern
-    const envPattern = /\$\{env:([^}]+)\}/g;
+    // Match ${env:VARIABLE_NAME} or ${VARIABLE_NAME} pattern
+    // ${env:VAR} format (VS Code standard)
+    // ${VAR} format (simple)
+    const envPattern = /\$\{(?:env:)?([^}]+)\}/g;
 
     return value.replace(envPattern, (match, envVarName) => {
         const envValue = process.env[envVarName];

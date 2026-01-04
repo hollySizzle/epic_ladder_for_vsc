@@ -106,4 +106,30 @@ suite('expandEnvVariables Test Suite', () => {
         const result = expandEnvVariables('${env:TEST_VAR}-${env:UNDEFINED_VAR}');
         assert.strictEqual(result, 'test_value-${env:UNDEFINED_VAR}');
     });
+
+    // Tests for ${VARIABLE_NAME} format (without env: prefix)
+    test('should expand simple format ${VAR}', () => {
+        const result = expandEnvVariables('${TEST_VAR}');
+        assert.strictEqual(result, 'test_value');
+    });
+
+    test('should expand simple format within text', () => {
+        const result = expandEnvVariables('https://${TEST_VAR}.example.com');
+        assert.strictEqual(result, 'https://test_value.example.com');
+    });
+
+    test('should expand multiple simple format variables', () => {
+        const result = expandEnvVariables('${TEST_VAR}-${ANOTHER_VAR}');
+        assert.strictEqual(result, 'test_value-another_value');
+    });
+
+    test('should handle mixed formats (env: and simple)', () => {
+        const result = expandEnvVariables('${env:TEST_VAR}-${ANOTHER_VAR}');
+        assert.strictEqual(result, 'test_value-another_value');
+    });
+
+    test('should keep original simple pattern for undefined variable', () => {
+        const result = expandEnvVariables('${UNDEFINED_VAR}');
+        assert.strictEqual(result, '${UNDEFINED_VAR}');
+    });
 });
