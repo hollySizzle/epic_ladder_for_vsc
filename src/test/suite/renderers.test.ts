@@ -106,6 +106,21 @@ suite('Renderers Test Suite', () => {
             const status = { name: 'Open', is_closed: false };
             assert.strictEqual(getStatusClass(status), 'status-open');
         });
+
+        test('should return status-closed for closed name when is_closed is undefined', () => {
+            const status = { name: 'クローズ' };
+            assert.strictEqual(getStatusClass(status), 'status-closed');
+        });
+
+        test('should return status-in-progress for progress name when is_closed is undefined', () => {
+            const status = { name: '着手中' };
+            assert.strictEqual(getStatusClass(status), 'status-in-progress');
+        });
+
+        test('should return status-open for Open name when is_closed is undefined', () => {
+            const status = { name: 'Open' };
+            assert.strictEqual(getStatusClass(status), 'status-open');
+        });
     });
 
     suite('renderActiveFilterBadges', () => {

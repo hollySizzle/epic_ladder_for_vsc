@@ -169,14 +169,20 @@ export function renderLeafItem(
 
 /**
  * Get CSS class for status
- * Note: クライアント側にも類似ロジック (scripts.ts の getStatusClassFromName) が存在します。
- * ロジック変更時は両方を更新してください。
+ * ステータス判定ロジックの単一ソース（クライアント側はサーバーから受け取ったクラス名を使用）
+ * is_closedフラグがない場合は名前ベースで判定
  */
-export function getStatusClass(status: { name: string; is_closed: boolean }): string {
-    if (status.is_closed) {
+export function getStatusClass(status: { name: string; is_closed?: boolean }): string {
+    // is_closedフラグがあれば優先（APIから取得時）
+    if (status.is_closed === true) {
         return 'status-closed';
     }
     const name = status.name.toLowerCase();
+    // is_closedフラグがない場合は名前ベースで判定（ステータス更新時）
+    if (status.is_closed === undefined &&
+        (name.includes('close') || name.includes('クローズ') || name.includes('完了'))) {
+        return 'status-closed';
+    }
     if (name.includes('progress') || name.includes('着手') || name.includes('進行')) {
         return 'status-in-progress';
     }

@@ -18,7 +18,8 @@ import {
     getNotConfiguredHtml,
     getErrorHtml,
     FilterOptions,
-    AssigneeInfo
+    AssigneeInfo,
+    getStatusClass
 } from './renderers';
 import {
     renderMarkdownToHtml,
@@ -183,7 +184,8 @@ export class EpicLadderWebviewProvider {
                         this.panel?.webview.postMessage({
                             command: 'statusUpdateSuccess',
                             issueId: message.issueId,
-                            newStatus: result.new_status
+                            newStatus: result.new_status,
+                            statusClass: getStatusClass({ name: result.new_status })
                         });
                     } catch (error) {
                         const errorMessage = error instanceof Error ? error.message : 'Unknown error';

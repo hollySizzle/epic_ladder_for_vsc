@@ -943,7 +943,7 @@ export function getScript(): string {
             } else if (message.command === 'commentError') {
                 onModalCommentError(message.error);
             } else if (message.command === 'statusUpdateSuccess') {
-                onStatusUpdateSuccess(message.issueId, message.newStatus);
+                onStatusUpdateSuccess(message.issueId, message.newStatus, message.statusClass);
             } else if (message.command === 'statusUpdateError') {
                 onStatusUpdateError(message.issueId, message.error);
             } else if (message.command === 'assigneeUpdateSuccess') {
@@ -955,7 +955,7 @@ export function getScript(): string {
             }
         });
 
-        function onStatusUpdateSuccess(issueId, newStatus) {
+        function onStatusUpdateSuccess(issueId, newStatus, statusClass) {
             const dropdown = document.querySelector('.status-dropdown[data-issue-id="' + issueId + '"]');
             const badge = dropdown?.querySelector('.status-badge');
 
@@ -966,8 +966,8 @@ export function getScript(): string {
                 const arrow = badge.querySelector('.status-dropdown-arrow');
                 badge.innerHTML = escapeHtml(newStatus) + (arrow ? arrow.outerHTML : '<span class="status-dropdown-arrow">▼</span>');
 
-                // Update status class
-                badge.className = 'status-badge status-clickable ' + getStatusClassFromName(newStatus);
+                // Update status class (use server-provided class)
+                badge.className = 'status-badge status-clickable ' + statusClass;
             }
 
             // Update modal select if open
@@ -1050,8 +1050,9 @@ export function getScript(): string {
             alert('Failed to update assignee: ' + errorMessage);
         }
 
-        // Note: サーバー側にも類似ロジック (renderers.ts の getStatusClass) が存在します。
-        // ロジック変更時は両方を更新してください。
+        // Note: メインロジックはサーバー側 (renderers.ts の getStatusClass) に一元化済み。
+        // この関数は階層表示など、サーバーからクラス名を受け取れない場合のフォールバック用。
+        // ロジック変更時は renderers.ts の getStatusClass を更新してください。
         function getStatusClassFromName(statusName) {
             if (!statusName) return 'status-open';
             const name = statusName.toLowerCase();
