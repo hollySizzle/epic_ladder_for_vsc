@@ -118,10 +118,11 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
-    "compile": "webpack",
-    "watch": "webpack --watch",
-    "package": "webpack --mode production --devtool hidden-source-map",
-    "compile:tsc": "tsc -p ./",
+    "compile:scss": "node scripts/compile-scss.js",
+    "compile": "npm run compile:scss && webpack",
+    "watch": "npm run compile:scss && webpack --watch",
+    "package": "npm run compile:scss && webpack --mode production --devtool hidden-source-map",
+    "compile:tsc": "npm run compile:scss && tsc -p ./",
     "pretest": "npm run compile:tsc",
     "test": "node ./out/test/runTest.js",
     "test:coverage": "c8 --reporter=text --reporter=html node ./out/test/runTest.js",
@@ -144,6 +145,7 @@
     "glob": "^13.0.0",
     "jsdom": "^27.4.0",
     "mocha": "^11.7.5",
+    "sass": "^1.97.1",
     "ts-loader": "^9.5.1",
     "typescript": "^5.3.0",
     "webpack": "^5.96.1",
@@ -155,8 +157,12 @@
     "sanitize-html": "^2.17.0"
   },
   "c8": {
-    "include": ["out/**/*.js"],
-    "exclude": ["out/test/**"],
+    "include": [
+      "out/**/*.js"
+    ],
+    "exclude": [
+      "out/test/**"
+    ],
     "all": true
   }
 }

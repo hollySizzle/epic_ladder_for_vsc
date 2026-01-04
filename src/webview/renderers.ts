@@ -3,6 +3,7 @@
  */
 import { ProjectStructureEpic, RedmineVersion } from '../types';
 import { escapeHtml } from './utils';
+import { getStyles } from './styles';
 
 export interface FilterOptions {
     versionId?: string;
@@ -334,34 +335,9 @@ export function getNotConfiguredHtml(): string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';">
     <title>Epic Ladder</title>
-    <style>
-        body {
-            font-family: var(--vscode-font-family);
-            color: var(--vscode-editor-foreground);
-            background: var(--vscode-editor-background);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .message {
-            text-align: center;
-            padding: 32px;
-        }
-        .icon {
-            font-size: 48px;
-            margin-bottom: 16px;
-        }
-        h2 {
-            margin-bottom: 8px;
-        }
-        p {
-            opacity: 0.8;
-        }
-    </style>
+    <style>${getStyles()}</style>
 </head>
-<body>
+<body class="not-configured-page">
     <div class="message">
         <div class="icon">&#9881;</div>
         <h2>Redmine Settings Required</h2>
@@ -382,38 +358,9 @@ export function getErrorHtml(message: string): string {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';">
     <title>Epic Ladder - Error</title>
-    <style>
-        body {
-            font-family: var(--vscode-font-family);
-            color: var(--vscode-editor-foreground);
-            background: var(--vscode-editor-background);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .message {
-            text-align: center;
-            padding: 32px;
-            max-width: 400px;
-        }
-        .icon {
-            font-size: 48px;
-            margin-bottom: 16px;
-            color: var(--vscode-errorForeground);
-        }
-        h2 {
-            margin-bottom: 8px;
-            color: var(--vscode-errorForeground);
-        }
-        p {
-            opacity: 0.8;
-            word-break: break-word;
-        }
-    </style>
+    <style>${getStyles()}</style>
 </head>
-<body>
+<body class="error-page">
     <div class="message">
         <div class="icon">&#9888;</div>
         <h2>Error Loading Data</h2>
