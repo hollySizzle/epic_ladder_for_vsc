@@ -8,3 +8,4 @@ dist/
 *.vsix
 tmp/**
 !.gitkeep
+coverage/
