@@ -1,0 +1,13 @@
+# コマンド実行規約定義
+# 危険なコマンドや確認が必要なコマンドに対して適用される規約を定義します
+
+rules:
+  # 例: Git操作規約
+  # - name: "Git操作規約"
+  #   patterns:
+  #     - "git*"
+  #   severity: "block"
+  #   token_threshold: 25000
+  #   message: |
+  #     Git操作を実行する場合は規約を確認してください
+  []

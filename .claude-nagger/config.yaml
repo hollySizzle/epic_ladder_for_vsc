@@ -1,0 +1,22 @@
+# claude-nagger 設定ファイル
+
+# セッション開始時設定
+session_startup:
+  enabled: true
+  messages:
+    first_time:
+      title: "プロジェクトセットアップ"
+      main_text: |
+        プロジェクトの規約を確認してください
+      severity: "block"
+
+# コンテキスト管理設定
+context_management:
+  reminder_thresholds:
+    light_warning: 30000
+    medium_warning: 60000
+    critical_warning: 100000
+
+# デバッグ設定
+debug:
+  enable_logging: false

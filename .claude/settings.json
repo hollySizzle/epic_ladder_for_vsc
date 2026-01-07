@@ -1,0 +1,100 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -m domain.hooks.session_startup_hook"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*__write.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -m domain.hooks.implementation_design_hook"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*replace.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -m domain.hooks.implementation_design_hook"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*insert.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -m domain.hooks.implementation_design_hook"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "claude-nagger hook session-startup"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*__write.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "claude-nagger hook implementation-design"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*replace.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "claude-nagger hook implementation-design"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*insert.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "claude-nagger hook implementation-design"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -m infrastructure.notifiers.discord_notifier \"📢 Claude Code から通知があります\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -m infrastructure.notifiers.discord_notifier \"🛑 Claude Code セッションが停止されました\""
+          }
+        ]
+      }
+    ]
+  }
+}
